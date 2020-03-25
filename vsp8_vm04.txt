@@ -1,0 +1,40 @@
+int x;
+int y;
+main()
+	start:
+	for (x = 0; x < 8; x = x+1)
+		if (adr (ff00+x))
+			adr () = 0;
+		else
+			adr () = 1;
+			goto path;
+	path:
+	adr (c000) = 0;
+	for (x = 0; x < 8; x++)
+		path[x]:
+		adr (ff00+x);
+		goto pathjump;
+	pathjump:
+	if (adr ())
+		goto put[1];
+	else
+		goto put[0];
+	for (y = 0; y < 2; y = y+1)
+		put[y]:
+		adr (8000);
+		for (x = 0; x < 8; x = x+1)
+			if (adr (4000, 4000))
+				if (adr (0000, 4000))
+					adr (ffff, (1<<(3+x))*y);
+			else
+				adr () = 1;
+				adr (0000, 4000) = y;
+				adr (4000+((1<<(3+x))*y)+(x*(1<<11)), 7800+((1<<((3+x))*y)) = 0;
+				goto path[x+1];
+	path[8]:
+	for (x = 0; x < 8; x++)
+		if (adr (x, 7))
+			out (ffff, 1<<x);
+		else
+			out (0000, 1<<x);
+	goto start;
