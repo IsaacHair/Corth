@@ -15,19 +15,21 @@ The commands that actually produce vsb code are if, else, adr, :, goto, and out.
 adr or out statement required inside an if statement. Optional assignment with adr.
 Out takes zero to two parameters, adr can take between zero and two; first is
 the value to assign it to and the second is the mask for assignment (1 = assign,
-0 = protect). : is placed after a lable to use with goto.
+0 = protect). : is placed after a lable to use with goto. A space can be put after
+the label and before the colon, then either global or local is stated. Default is global.
 
 Spaces after each command, then parenthesis. Semicolons only inside for loops. Commas
 for multiple arguments. Tab deliniation for loops, not brackets. Note that parenthesis
 are optional but may be needed to ensure the correct grouping. Spacing can be arbitrary,
-just ensure that tab deliniation lines up. Square brackets need to be used if combining a compiler variable with a label. If a
-compiler variable is used elsewhere, just treat it like a normal number. Order of
-operations is strictly left to right unless there are parenthesis.
+just ensure that tab deliniation lines up. Square brackets need to be used if combining a
+compiler variable with a label. If a compiler variable is used elsewhere, just treat it
+like a normal number. Order of operations is strictly left to right unless there are
+parenthesis.
 */
 
 main()
 	/*lsb is bit zero; msb is bit 7*/
-	int (f, x, y, z)
+	int (x, y, z)
 	start:
 	for (x = 0; x < 8; x = x+1)
 		if (adr(0000+x))
@@ -50,15 +52,7 @@ main()
 		put[y]:
 		adr(8000)
 		for (x = 8, z = 0; z < 8; z = z+1, x = x<<1)
-			if (adr(4000, 4000))
-				if (adr(0000, 4000))
-					adr(ffff, x*y)
-			else
-				adr() = 1
-				adr(0000, 4000) = y
-				for (f = 0; (!(z == 7))&&(!f); f = 1)
-					adr(4000+(x*y)+z, 7800+x*y)) = 0
-				goto path[x+1]
+			develop(x, y, z)
 	path[8]:
 	for (x = 0; x < 8; x++)
 		if (adr(x, 7))
@@ -71,3 +65,15 @@ main()
 		else
 			out(0000, 1<<(x+8))
 	goto start
+
+develop(x, y, z)
+	int (f)
+	if (adr(4000, 4000))
+		if (adr(0000, 4000))
+			adr(ffff, x*y)
+	else
+		adr() = 1
+		adr(0000, 4000) = y
+		for (f = 0; (!(z == 7))&&(!f); f = 1)
+			adr(4000+(x*y)+z, 7800+x*y)) = 0
+		goto path[x+1]
