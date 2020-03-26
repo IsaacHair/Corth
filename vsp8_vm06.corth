@@ -1,9 +1,10 @@
 /*
-The compiler commands are (), call, int, and for. () tells the compiler
-to declare a function for compile time use only. int tells the compiler to declare a
-variable for compile time use only. for describes a variable manipulation and
-incrementation scheme. Understand that this is not actually going to create a for loop
-in the resulting program. Rather, it creates a loop with variables that can be used to
+The compiler commands are (), int, [], and for. () tells the compiler to declare
+a function for compile time use only. () also indicates a function call int tells
+the compiler to declare a variable for compile time use only. for describes a variable
+manipulation and incrementation scheme. Understand that this is not actually going to
+create a for loop in the resulting program.
+Rather, it creates a loop with variables that can be used to
 write code based on those variables. call just calls a function, again compile time only.
 All variables declared inside a function are specific there, same with for loops.
 All variables declared outside anything are global. for can also be used as an if
@@ -11,7 +12,7 @@ statement with flag. Lables work the same way as variables in terms of global vs
 non-global. Note that only vsb code written in main() or functions reached by it
 will be compiled.
 
-The commands that actually produce vsb code are if, else, adr, :, goto, and out.
+The commands that actually produce vsb code are if, else, adr, :, =, goto, and out.
 adr or out statement required inside an if statement. Optional assignment with adr.
 Out takes zero to two parameters, adr can take between zero and two; first is
 the value to assign it to and the second is the mask for assignment (1 = assign,
