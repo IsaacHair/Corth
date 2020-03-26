@@ -36,6 +36,7 @@ Don't need goto's for pre-compiled code because these kinds of things should be 
 into the vsp code itself using vsp if-else, goto, etc.
 
 Compiling Process:
+- Delete comments
 - Scan for global variables and malloc() them to integers.
 - Scan for macros and repeat until no macros are left (except for "for" loops).
 Malloc() and free() specific varaibles for those macros.
