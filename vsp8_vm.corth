@@ -1,15 +1,14 @@
 /*
-The compiler commands are (), int, [], and for. () tells the compiler to declare
-a function for compile time use only. () also indicates a function call int tells
+The compiler commands are (), int, #, [], and for. # tells the compiler to declare
+a macro for compile time use only. () indicates a macro call. int tells
 the compiler to declare a variable for compile time use only. for describes a variable
 manipulation and incrementation scheme. Understand that this is not actually going to
-create a for loop in the resulting program.
-Rather, it creates a loop with variables that can be used to
-write code based on those variables. call just calls a function, again compile time only.
-All variables declared inside a function are specific there, same with for loops.
+create a for loop in the resulting program. Rather, it creates a loop with
+variables that can be used to write code based on those variables.
+All variables declared inside a macro are specific there, same with for loops.
 All variables declared outside anything are global. for can also be used as an if
 statement with flag. Lables work the same way as variables in terms of global vs
-non-global. Note that only vsb code written in main() or functions reached by it
+non-global. Note that only vsb code written directly or in a macro call from direct code
 will be compiled.
 
 The commands that actually produce vsb code are if, else, adr, :, =, goto, and out.
@@ -19,55 +18,59 @@ the value to assign it to and the second is the mask for assignment (1 = assign,
 0 = protect). : is placed after a lable to use with goto. A space can be put after
 the label and before the colon, then either global or local is stated. Default is global.
 
-Spaces after each command, then parenthesis. Semicolons only inside for loops. Commas
+Spaces after each command or none, then parenthesis. Semicolons only inside for loops. Commas
 for multiple arguments. Tab deliniation for loops, not brackets. Note that parenthesis
 are optional but may be needed to ensure the correct grouping. Spacing can be arbitrary,
 just ensure that tab deliniation lines up. Square brackets need to be used if combining a
 compiler variable with a label. If a compiler variable is used elsewhere, just treat it
 like a normal number. Order of operations is strictly left to right unless there are
 parenthesis.
+
+In a way, for is a special kind of macro. It defines manipulation of variables and allows
+looping until something occurs. When it loops, it prints the body of the for loop to the
+compiled vsp file. Note that this compiles to vsp assembly, requiring a bit extra processing
+to compile to vsp upload code (maybe just combine the two processes into one though).
 */
 
-main()
-	/*lsb is bit zero; msb is bit 7*/
-	int (x, y, z)
-	start:
-	for (x = 0; x < 8; x = x+1)
-		if (adr(0000+x))
-			adr() = 0
-		else
-			adr() = 1
-			goto path
-	path:
-	adr(c000) = 0
-	for (x = 0; x < 8; x++)
-		path[x]:
-		adr(0000+x)
-		goto pathjump
-	pathjump:
-	if (adr())
-		goto put[1]
+/*lsb is bit zero; msb is bit 7*/
+int (x, y, z)
+start:
+for (x = 0; x < 8; x = x+1)
+	if (adr(0000+x))
+		adr() = 0
 	else
-		goto put[0]
-	for (y = 0; y < 2; y = y+1)
-		put[y]:
-		adr(8000)
-		for (x = 8, z = 0; z < 8; z = z+1, x = x<<1)
-			develop(x, y, z)
-	path[8]:
-	for (x = 0; x < 8; x++)
-		if (adr(x, 7))
-			out(ffff, 1<<x)
-		else
-			out(0000, 1<<x)
-	for (x = 0; x < 8; x = x+1)
-		if (adr(0000+x))
-			out(ffff, 1<<(x+8))
-		else
-			out(0000, 1<<(x+8))
-	goto start
+		adr() = 1
+		goto path
+path:
+adr(c000) = 0
+for (x = 0; x < 8; x++)
+	path[x]:
+	adr(0000+x)
+	goto pathjump
+pathjump:
+if (adr())
+	goto put[1]
+else
+	goto put[0]
+for (y = 0; y < 2; y = y+1)
+	put[y]:
+	adr(8000)
+	for (x = 8, z = 0; z < 8; z = z+1, x = x<<1)
+		develop(x, y, z)
+path[8]:
+for (x = 0; x < 8; x++)
+	if (adr(x, 7))
+		out(ffff, 1<<x)
+	else
+		out(0000, 1<<x)
+for (x = 0; x < 8; x = x+1)
+	if (adr(0000+x))
+		out(ffff, 1<<(x+8))
+	else
+		out(0000, 1<<(x+8))
+goto start
 
-develop(x, y, z)
+#develop(x, y, z)
 	int (f)
 	if (adr(4000, 4000))
 		if (adr(0000, 4000))
