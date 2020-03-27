@@ -64,7 +64,10 @@ if statement from that. adr() and out() just result in a couple adr1/adr0 and ou
 lines to set the address/output to that with a mask. If the value written is ffff or
 0000 then only one line of vsb assembly is needed. An adr() statement can be followed by an =
 and then a number. If the number is zero, buf0 is written. If the value is non-zero, buf1
-is written.
+is written. *During this last scan, the compiler will automatically count the address of the
+instruction, starting with zero. It will just add one for each instruction. If-else will be
+handled, as stated before, so that the "if" condition has an odd address and the "else" condition
+is the even counterpart to that address.
 */
 
 /*lsb is bit zero; msb is bit 7*/
