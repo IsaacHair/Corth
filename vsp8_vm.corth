@@ -70,10 +70,12 @@ instruction, starting with zero. It will just add one for each instruction. If-e
 handled, as stated before, so that the "if" condition has an odd address and the "else" condition
 is the even counterpart to that address. *Will have to go twice, once to see where labels
 end up, and write everything except gotos, then again to fill in gotos.
+
+**This "readme" essentially is outdated; see corth-vsp.c for an updated "readme"**
 */
 
 /*lsb is bit zero; msb is bit 7*/
-int (x, y, z)
+int (x, y, z, f)
 start:
 for (x = 0; x < 8; x = x+1)
 	if (adr(0000+x))
@@ -96,7 +98,7 @@ for (y = 0; y < 2; y = y+1)
 	put[y]:
 	adr(8000)
 	for (x = 8, z = 0; z < 8; z = z+1, x = x<<1)
-		develop(x, y, z)
+		develop()
 path[8]:
 for (x = 0; x < 8; x++)
 	if (adr(x, 7))
@@ -110,8 +112,7 @@ for (x = 0; x < 8; x = x+1)
 		out(0000, 1<<(x+8))
 goto start
 
-#develop(x, y, z)
-	int (f)
+#develop()
 	if (adr(4000, 4000))
 		if (adr(0000, 4000))
 			adr(ffff, x*y)
