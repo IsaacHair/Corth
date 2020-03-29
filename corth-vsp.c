@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     just ensure that tab deliniation lines up. Square brackets need to be used if combining a
     compiler variable with a label. If a compiler variable is used elsewhere, just treat it
     like a normal number. Order of operations is strictly left to right unless there are
-    parenthesis.
+    parenthesis. *Exception: the assignment operator '=' is always the lowest priority.
 
     In a way, for is a special kind of macro. It defines manipulation of variables and allows
     looping until something occurs. When it loops, it prints the body of the for loop to the
