@@ -9,6 +9,8 @@ int main(int argc, char* argv[]) {
     of buffer files into just two files that go back and forth, (or
     one file that alternates with the target file), but less
     useful for diagnostics, so do this later. Also need source file and target.
+    Going to just have buffer and target files written to. To test various stages,
+    just comment out the rest of the code.
     
     The compiler commands are (), int, #, [], and for. # tells the compiler to declare
     a macro for compile time use only. () indicates a macro call. int tells
@@ -85,28 +87,37 @@ int main(int argc, char* argv[]) {
     is the even counterpart to that address. *Will have to go twice, once to see where labels
     end up, and write everything except gotos, then again to fill in gotos.
 
-    Can have up to 1024 variables, each up to 16 characters in length.
+    Max 1024 int size variables (16 bits). This avoids malloc pain. Might add in malloc later
+    but for now it is important to simply get a working version.
    */
 
-  if (argc != 12) {
-    printf("Usage: cov <source> (x9)<buffer file> <target file>\n");
+  if (argc != 4) {
+    printf("Usage: cov <source> <target> <buffer>\n");
     return (-1);
   }
-  FILE* source = fopen(argv[1], "r");
-  FILE* 
-  
-  comment-malloc();
-  while (macros())
-    if (!macros())
+
+  //go back and forth, keeping most compiled version in target file
+  comment-malloc(argv[0], argv[1]);
+  do {
+    if (!macros(argv[1], argv[2])) {
+      copy(argv[2], argv[1]);
       break;
-  while (fors())
-    if (!fors())
+    }
+  } while (macros(argv[2], argv[1]));
+  do {
+    if (!fors(argv[1], argv[2])) {
+      copy(argv[2], argv[1]);
       break;
-  while (evaluate())
-    if (!evaluate())
+    }
+  } while (fors(argv[2], argv[1]));
+  do {
+    if (!evaluate(argv[1], argv[2])) {
+      copy(argv[2], argv[1]);
       break;
-  translate();
-  gotos();
+    }
+  } while (evaluate(argv[2], argv[1]));
+  translate(argv[1], argv[2]);
+  gotos(argv[2], argv[1]);
   freemem();
 
   return (0);
