@@ -22,7 +22,8 @@ int main(int argc, char* argv[]) {
     All variables declared outside anything are global. for can also be used as an if
     statement with flag. Lables work the same way as variables in terms of global vs
     non-global. Note that only vsb code written directly or in a macro call from direct code
-    will be compiled. Everything is global.
+    will be compiled. Everything is global. Note that () is not needed to call a function.
+    All you need is just the name of the function.
 
     The commands that actually produce vsb code are if, else, adr, :, =, goto, and out.
     adr or out statement required inside an if statement. Optional assignment with adr.
@@ -52,7 +53,8 @@ int main(int argc, char* argv[]) {
     into the vsp code itself using vsp if-else, goto, etc.
 
     Compiling Process:
-    - Delete comments as scan for global variables and malloc() them to integers.
+    - Delete comments as scan for global variables and malloc() them to integers. Don't need
+    to delete the extra lines as these will be deleted when the assembly code is assembled.
     - Scan for macros and insert; repeat until no macros are left (except for "for" loops).
     - Scan again and, if reach a for loop, interpret each statement and
     buffer them. Then, repeat the contents of the for loop as if it was a macro,
@@ -84,12 +86,39 @@ int main(int argc, char* argv[]) {
     is written. *During this last scan, the compiler will automatically count the address of the
     instruction, starting with zero. It will just add one for each instruction. If-else will be
     handled, as stated before, so that the "if" condition has an odd address and the "else" condition
-    is the even counterpart to that address. *Will have to go twice, once to see where labels
-    end up, and write everything except gotos, then again to fill in gotos.
+    is the even counterpart to that address. *See where labels end up and write everything except
+    for gotos.
+    - Scan and add in the addresses for gotos.
+    - Free variables. Using malloc so that you can have as many variables as there is ram
+    available on the computer.
+    
+    Consider this; how would this be compiled? Technically, it should be non-fininite size:
 
-    Max 1024 int size variables (16 bits). This avoids malloc pain. Might add in malloc later
-    but for now it is important to simply get a working version.
-   */
+    int (f, i)
+    for (f = 0; 0;)
+    a
+    end:
+    goto end
+    
+    #a
+      out(1000, ffff)
+      for (i = 1; f&&i; i = 0)
+        a
+      for (i = 1; (!f)&&i; i = 0)
+        out(0001, ffff)
+
+    Should yeild:
+
+    0000 out0 ffff 0001
+    0001 out1 1000 0002
+    0002 out0 ffff 0003
+    0003 out1 0001 0004
+    0004 out0 0000 0004
+
+    Ok so this shouldn't be necessary when actually writing programs. You can simply avoid infinite
+    loops within the macros, meaning that simply inserting macros to where they are called one by one
+    will suffice for programming purposes.
+  */
 
   if (argc != 4) {
     printf("Usage: cov <source> <target> <buffer>\n");
@@ -97,8 +126,8 @@ int main(int argc, char* argv[]) {
   }
 
   //go back and forth, keeping most compiled version in target file
-  comment-malloc(argv[0], argv[1]);
-  do {
+  commentmalloc(argv[0], argv[1]);
+  /*do {
     if (!macros(argv[1], argv[2])) {
       copy(argv[2], argv[1]);
       break;
@@ -118,7 +147,32 @@ int main(int argc, char* argv[]) {
   } while (evaluate(argv[2], argv[1]));
   translate(argv[1], argv[2]);
   gotos(argv[2], argv[1]);
-  freemem();
+  freemem();*/
 
   return (0);
+}
+
+void commentmalloc(char* sourceadr, char* targetadr) {
+  FILE * source = fopen(sourceadr, "r");
+  FILE * target = fopen(targetadr, "w");
+  char c, p;
+  int comment, code;
+
+  for (p = fgetc(source), p == EOF ? (c = p) : (c = fgetc(source)), comment = 0, code = 1;
+       c != EOF; p = c, c = fgetc(source))
+    if (p == '/' && c == '*') {
+      code = 0;
+      comment = 1;
+    }
+    else if (!comment) {
+      code = 1;
+      fprintf(target, "%c", p);
+    }
+    else if (p == '*' && c == '/')
+      comment = 0;
+  if (code)
+    fprintf(target, "%c", c);
+
+  fclose(source);
+  fclose(target);
 }

@@ -1,0 +1,10 @@
+#define print() {\
+  1;\
+  other();\
+  }
+#define other() print()
+
+main()
+{
+  print();
+}
