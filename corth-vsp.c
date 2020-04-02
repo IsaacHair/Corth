@@ -1,7 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-
-int main(int argc, char* argv[]) {
   /*
     Need buffers for comments and malloc, macros, other macros, for loop,
     other for loop, evaluate, other evaluate, translation, and gotos.
@@ -90,7 +86,9 @@ int main(int argc, char* argv[]) {
     for gotos.
     - Scan and add in the addresses for gotos.
     - Free variables. Using malloc so that you can have as many variables as there is ram
-    available on the computer.
+    available on the computer. Note: max name length is 16 characters, all lower case. Stored
+    in a 17 character array because need terminating '\0', just easier to add extra for full length
+    terminating.
     
     Consider this; how would this be compiled? Technically, it should be non-fininite size:
 
@@ -120,59 +118,114 @@ int main(int argc, char* argv[]) {
     will suffice for programming purposes.
   */
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+
+struct ramstruct {
+  char label[17];
+  short value;
+} *ram;
+
+void comment(char* sourceadr, char* targetadr) {
+  FILE * source = fopen(sourceadr, "r");
+  FILE * target = fopen(targetadr, "w");
+  char c, p;
+  int code;
+
+  for ((p = fgetc(source)) == EOF ? (c = p) : (c = fgetc(source)), code = 1;
+       c != EOF;)
+    if (p == '/' && c == '*') {
+      code = 0;
+      (p = fgetc(source)) == EOF ? (c = p) : (c = fgetc(source));
+    }
+    else if (p == '*' && c == '/') {
+      code = 1;
+      (p = fgetc(source)) == EOF ? (c = p) : (c = fgetc(source));
+    }
+    else if (code) {
+      fprintf(target, "%c", p);
+      p = c;
+      c = fgetc(source);
+    }
+    else {
+      p = c;
+      c = fgetc(source);
+    }
+  if (code && (p != EOF))
+    fprintf(target, "%c", p);
+
+  fclose(source);
+  fclose(target);
+}
+
+void mem(char* sourceadr, char* targetadr) {
+  FILE * source = fopen(sourceadr, "r");
+  FILE * target = fopen(targetadr, "w");
+  char a, b, c, d, e;
+  int value, count, i;
+  char buff[16];
+
+  for (a = b = c = d = '\0', value = 0, count = 0, e = fgetc(source); e != EOF;
+       a = b, b = c, c = d, d = e, e = fgetc(source))
+    if (a == 'i' && b == 'n' && c == 't') {
+      value = 1;
+      count++;
+    }
+    else if (c == '\n')
+      value = 0;
+    else if (value && c == ',')
+      count++;
+  ram = (struct ramstruct*)malloc(sizeof(struct ramstruct[count]));
+  for (b = '\0', a = '\0', value = 0, count = 0, i = 0; (c = fgetc(source)) != EOF; a = b, b = c)
+    if (a == 'i' && b == 'n' && c == 't') {
+      value = 1;
+      for (; i > 0; i--)
+	ram[count].label[i] = buff[i];
+    }
+    else if (c == '\n' && value) {
+      value = 0;
+      count++;
+    }
+    else if (value && c == ',') {
+      i = 0;
+      count++;
+    }
+    else if ('a' <= c <= 'z')
+  printf("ram: %s, %d\n", ram[0].label, ram[0].value);
+}
+
+int main(int argc, char* argv[]) {
   if (argc != 4) {
     printf("Usage: cov <source> <target> <buffer>\n");
     return (-1);
   }
 
   //go back and forth, keeping most compiled version in target file
-  commentmalloc(argv[0], argv[1]);
-  /*do {
-    if (!macros(argv[1], argv[2])) {
-      copy(argv[2], argv[1]);
-      break;
-    }
-  } while (macros(argv[2], argv[1]));
+  comment(argv[1], argv[2]);
+  /*mem(argv[2], argv[3]);
+  copy(argv[3], argv[2]);
   do {
-    if (!fors(argv[1], argv[2])) {
-      copy(argv[2], argv[1]);
+    if (!macros(argv[2], argv[3])) {
+      copy(argv[3], argv[2]);
       break;
     }
-  } while (fors(argv[2], argv[1]));
+  } while (macros(argv[3], argv[2]));
   do {
-    if (!evaluate(argv[1], argv[2])) {
-      copy(argv[2], argv[1]);
+    if (!fors(argv[2], argv[3])) {
+      copy(argv[3], argv[2]);
       break;
     }
-  } while (evaluate(argv[2], argv[1]));
-  translate(argv[1], argv[2]);
-  gotos(argv[2], argv[1]);
-  freemem();*/
+  } while (fors(argv[3], argv[2]));
+  do {
+    if (!evaluate(argv[2], argv[3])) {
+      copy(argv[3], argv[2]);
+      break;
+    }
+  } while (evaluate(argv[3], argv[2]));
+  translate(argv[2], argv[3]);
+  gotos(argv[3], argv[2]);*/
+  free(ram);
 
   return (0);
-}
-
-void commentmalloc(char* sourceadr, char* targetadr) {
-  FILE * source = fopen(sourceadr, "r");
-  FILE * target = fopen(targetadr, "w");
-  char c, p;
-  int comment, code;
-
-  for (p = fgetc(source), p == EOF ? (c = p) : (c = fgetc(source)), comment = 0, code = 1;
-       c != EOF; p = c, c = fgetc(source))
-    if (p == '/' && c == '*') {
-      code = 0;
-      comment = 1;
-    }
-    else if (!comment) {
-      code = 1;
-      fprintf(target, "%c", p);
-    }
-    else if (p == '*' && c == '/')
-      comment = 0;
-  if (code)
-    fprintf(target, "%c", c);
-
-  fclose(source);
-  fclose(target);
 }
