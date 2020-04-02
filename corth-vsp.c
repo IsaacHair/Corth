@@ -18,15 +18,16 @@
     All variables declared outside anything are global. for can also be used as an if
     statement with flag. Lables work the same way as variables in terms of global vs
     non-global. Note that only vsb code written directly or in a macro call from direct code
-    will be compiled. Everything is global. Note that () is not needed to call a function.
-    All you need is just the name of the function.
+    will be compiled. Everything is global. Note that () is not needed to call a macro.
+    All you need is just the name of the macro.
 
     The commands that actually produce vsb code are if, else, adr, :, =, goto, and out.
     adr or out statement required inside an if statement. Optional assignment with adr.
     Out takes zero to two parameters, adr can take between zero and two; first is
     the value to assign it to and the second is the mask for assignment (1 = assign,
     0 = protect). : is placed after a lable to use with goto. A space can be put after
-    the label and before the colon. Always global.
+    the label and before the colon. Always global. Need to ensure that if-else statements can
+    be used without needing to increase the indent level every time.
 
     Macros themselves are NEVER actually compiled into vsp assembly. Instead, they need to
     be called from within the program.
@@ -48,13 +49,16 @@
     Don't need goto's for pre-compiled code because these kinds of things should be incorporated
     into the vsp code itself using vsp if-else, goto, etc.
 
+    Max macro name length: 16 characters, same as max variable name length.
+
     Compiling Process:
-    - Delete comments as scan for global variables and malloc() them to integers. Don't need
-    to delete the extra lines as these will be deleted when the assembly code is assembled.
+    - Delete comments.
+    - Convert everything to tokens and delete extra space and parenthesis.
+    - Scan for global variables and malloc() them to 8 byte integers.
     - Scan for macros and insert; repeat until no macros are left (except for "for" loops).
     - Scan again and, if reach a for loop, interpret each statement and
     buffer them. Then, repeat the contents of the for loop as if it was a macro,
-    using the malloc/free rules from before and incrementing or manipulating
+    using the rules from before and incrementing or manipulating
     variables as specified until reach point where condition is false, then
     move on. If condition is false to begin with, then don't print contents at all.
     *The other action that occurs simutaneously is replacing variables
@@ -64,7 +68,8 @@
     - Scan again and actually evaluate the expressions. (1<<(4+2)) becomes 0040.
     Note that everthing is written in hex as an int, and everything is stored that way.
     So, even though (1<<31)/(1<<30) should equal 2, it will actually result in overflows
-    and be weird. Note that the leading zeros can be eliminated if you want. *Like before, do
+    and be weird. ACTUALLY MAKING DATA TYPES ALL 8 BYTES. Allows for convenience.
+    Note that the leading zeros can be eliminated if you want. *Like before, do
     this recursively, starting with the most nested set of parenthesis and then working your
     way out. Repeat until no parentheses remain at all. *Technically, none are needed, even
     for calling macros and for adr, out, if, goto, else, and :.
@@ -122,9 +127,14 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#define FOR 0
+#define HASH 1
+#define CALL 2
+#define 
+
 struct ramstruct {
   char label[17];
-  short value;
+  uint64_t value;
 } *ram;
 
 void comment(char* sourceadr, char* targetadr) {
@@ -159,6 +169,18 @@ void comment(char* sourceadr, char* targetadr) {
   fclose(target);
 }
 
+void token(char* sourceadr, char* targetadr) {
+  FILE * source = fopen(sourceadr, "r");
+  FILE * target = fopen(targetadr, "w");
+  char shift[18];
+  int i;
+
+  for (i = 0; i < 18; i++)
+    shift[i] = '\0';
+  for (; shift[16] != EOF; shift[17] != EOF ? (shift[17] = fgetc(source)) : 1, increment(shift)) {
+    //checking shift[16] instead of [17] means that you will have a chance to check for key words at the end of the file
+    if (
+    
 void mem(char* sourceadr, char* targetadr) {
   FILE * source = fopen(sourceadr, "r");
   FILE * target = fopen(targetadr, "w");
@@ -203,8 +225,8 @@ int main(int argc, char* argv[]) {
 
   //go back and forth, keeping most compiled version in target file
   comment(argv[1], argv[2]);
-  /*mem(argv[2], argv[3]);
-  copy(argv[3], argv[2]);
+  token(argv[2], argv[3]);
+  /*mem(argv[3], argv[2]);
   do {
     if (!macros(argv[2], argv[3])) {
       copy(argv[3], argv[2]);

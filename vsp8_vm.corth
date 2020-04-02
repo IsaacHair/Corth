@@ -71,7 +71,7 @@ handled, as stated before, so that the "if" condition has an odd address and the
 is the even counterpart to that address. *Will have to go twice, once to see where labels
 end up, and write everything except gotos, then again to fill in gotos.
 
-**This "readme" essentially is outdated; see corth-vsp.c for an updated "readme"**
+**This "readme" is depricated; see corth-vsp.c for an updated "readme"**
 */
 
 /*lsb is bit zero; msb is bit 7*/
