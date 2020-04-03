@@ -127,10 +127,19 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define FOR 0
-#define HASH 1
+#define NULL 0
+#define DEC 1
 #define CALL 2
-#define 
+#define INT 3
+#define IF 4
+#define ELSE 5
+#define ADR 6
+#define OUT 7
+#define LABEL 8
+#define GOTO 9
+#define ASN 10
+#define TAB 11
+#define FOR 12
 
 struct ramstruct {
   char label[17];
@@ -177,9 +186,10 @@ void token(char* sourceadr, char* targetadr) {
 
   for (i = 0; i < 18; i++)
     shift[i] = '\0';
-  for (; shift[16] != EOF; shift[17] != EOF ? (shift[17] = fgetc(source)) : 1, increment(shift)) {
+  for (; shift[16] != EOF; shift[17] != EOF ? (shift[17] = fgetc(source)) : 1, tokeninc(shift)) {
     //checking shift[16] instead of [17] means that you will have a chance to check for key words at the end of the file
-    if (
+    if (tokencheck(shift))
+      fprintf(target, "%c", tokencheck(shift));
     
 void mem(char* sourceadr, char* targetadr) {
   FILE * source = fopen(sourceadr, "r");
