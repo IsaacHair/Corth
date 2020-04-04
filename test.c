@@ -1,11 +1,9 @@
-#define print(x) {				\
-    1;						\
-    if (x)					\
-      other();					\
-  }
-#define other() print()
+#include <stdio.h>
+#include <stdlib.h>
 
 main()
 {
-  print(0);
+  int x = 1;
+  if (1)
+    x = 2, printf("some stuff\n"), printf("%d\n", x);
 }

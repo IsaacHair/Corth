@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define NULL 0
 #define DEC 1
 #define CALL 2
 #define INT 3
@@ -15,6 +14,10 @@
 #define ASN 10
 #define TAB 11
 #define FOR 12
+#define ENDING 13
+#define TOKEN 0
+#define DPL 1
+//displacement (tells tokencheck() to return negative length of token)
 
 struct ramstruct {
   char label[17];
@@ -43,8 +46,7 @@ void comment(char* sourceadr, char* targetadr) {
       c = fgetc(source);
     }
     else {
-      p = c;
-      c = fgetc(source);
+      p = c, c = fgetc(source);
     }
   if (code && (p != EOF))
     fprintf(target, "%c", p);
@@ -53,20 +55,52 @@ void comment(char* sourceadr, char* targetadr) {
   fclose(target);
 }
 
+void tokeninc(char * shift) {
+  int i;
+  for (i = 0; i < 17; i++)
+    shift[i] = shift[i+1];
+}
+
+int tokencheck(char * shift) {
+  if (shift[17] == '#')
+    return DEC;
+  else if (compare(shift, "%call"))
+    return CALL;
+  else if (compare(shift, "int"))
+    return INT;
+  else if (compare(shift, "if"))
+    return IF;
+
 void token(char* sourceadr, char* targetadr) {
   FILE * source = fopen(sourceadr, "r");
   FILE * target = fopen(targetadr, "w");
   char shift[18];
   int i;
-
+  
   for (i = 0; i < 18; i++)
     shift[i] = '\0';
-  for (; shift[16] != EOF; shift[17] != EOF ? (shift[17] = fgetc(source)) : 1, tokeninc(shift)) {
-    //checking shift[16] instead of [17] means that you will have a chance to check for key words at the end of the file
-    if (tokencheck(shift))
+  for (; shift[16] != EOF; shift[17] != EOF ?
+	 (shift[17] = fgetc(source)) : 1, tokeninc(shift)) {
+    //checking shift[16] instead of [17] means
+    //that you will have a chance to check for key words at the end of the file
+    //moving cursor back means that you can just directly copy the file and,
+    //if you get to a token, you can just go back and delete what you wrote
+    //this means that at the end of the file it has to be purged so that
+    //random text isn't hanging; add ENDING token
+    //fine to use fseek because there will be no carriage return problems
+    //eg. it is 2 bytes in the file but 1 character, so mismatch length
+    //because by definition token keywords must be concatenated together
+    if (tokencheck(shift, TOKEN)) {
+      fseek(target, tokencheck(shift, DPL), SEEK_CUR);
       fprintf(target, "%c", tokencheck(shift));
+    }
+  }
+  fprintf(target, "%c", ENDING);
+  fclose(target);
+  fclose(source);
+}
     
-void mem(char* sourceadr, char* targetadr) {
+/*void mem(char* sourceadr, char* targetadr) {
   FILE * source = fopen(sourceadr, "r");
   FILE * target = fopen(targetadr, "w");
   char a, b, c, d, e;
@@ -84,7 +118,8 @@ void mem(char* sourceadr, char* targetadr) {
     else if (value && c == ',')
       count++;
   ram = (struct ramstruct*)malloc(sizeof(struct ramstruct[count]));
-  for (b = '\0', a = '\0', value = 0, count = 0, i = 0; (c = fgetc(source)) != EOF; a = b, b = c)
+  for (b = '\0', a = '\0', value = 0, count = 0, i = 0;
+       (c = fgetc(source)) != EOF; a = b, b = c)
     if (a == 'i' && b == 'n' && c == 't') {
       value = 1;
       for (; i > 0; i--)
@@ -100,7 +135,9 @@ void mem(char* sourceadr, char* targetadr) {
     }
     else if ('a' <= c <= 'z')
   printf("ram: %s, %d\n", ram[0].label, ram[0].value);
-}
+  fclose(target);
+  fclose(source);
+  }*/
 
 int main(int argc, char* argv[]) {
   if (argc != 4) {
