@@ -2,19 +2,19 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define DEC 1
-#define CALL 2
-#define INT 3
-#define IF 4
-#define ELSE 5
-#define ADR 6
-#define OUT 7
-#define LABEL 8
-#define GOTO 9
-#define ASN 10
-#define TAB 11
-#define FOR 12
-#define ENDING 13
+#define DEC 'A'
+#define CALL 'B'
+#define INT 'C'
+#define IF 'D'
+#define ELSE 'E'
+#define ADR 'F'
+#define OUT 'G'
+#define LABEL 'H'
+#define GOTO 'I'
+#define ASN 'J'
+#define TAB 'K'
+#define FOR 'L'
+#define ENDING 'M'
 #define TOKEN 0
 #define DPL 1
 //displacement (tells tokencheck() to return negative length of token)
@@ -61,26 +61,99 @@ void tokeninc(char * shift) {
     shift[i] = shift[i+1];
 }
 
-int tokencheck(char * shift) {
-  if (shift[17] == '#')
-    return DEC;
-  else if (compare(shift, "%call"))
-    return CALL;
-  else if (compare(shift, "int"))
-    return INT;
-  else if (compare(shift, "if"))
-    return IF;
+int compare(char * shift, char * object) {
+  int i, j, compare;
+  if (object[0] != '%') {
+    compare = 1;
+    for (i = 0; object[i] != '\0'; i++) ;
+    i--;
+    for (j = 16; i >= 0; j--, i--)
+      if (shift[j] != object[i])
+	compare = 0;
+    if (shift[17] >= 'a' && shift[17] <= 'z')
+      compare = 0;
+    if (shift[j-1] >= 'a' && shift[j-1] <= 'z')
+      compare = 0;
+    return (compare);
+  }
+  else {
+    if (shift[17] < 'a' || shift[17] > 'z')
+      return (0);
+    else
+      return (0);
+  }
+}
+
+int tokencheck(char * shift, int select) {
+  if (select == TOKEN) {
+    if (shift[17] == '#')
+      return DEC;
+    else if (compare(shift, "int"))
+      return INT;
+    else if (compare(shift, "if"))
+      return IF;
+    else if (compare(shift, "else"))
+      return ELSE;
+    else if (compare(shift, "adr"))
+      return ADR;
+    else if (compare(shift, "out"))
+      return OUT;
+    else if (shift[17] == ':')
+      return LABEL;
+    else if (compare(shift, "goto"))
+      return GOTO;
+    else if (shift[17] == '=')
+      return ASN;
+    else if (shift[17] == '\t')
+      return TAB;
+    else if (compare(shift, "for"))
+      return FOR;
+    else if (compare(shift, "%call"))
+      return CALL;
+    else
+      return 0;
+  }
+  else {
+    if (shift[17] == '#')
+      return 0;
+    else if (compare(shift, "int"))
+      return 0;
+    else if (compare(shift, "if"))
+      return 0;
+    else if (compare(shift, "else"))
+      return 0;
+    else if (compare(shift, "adr"))
+      return 0;
+    else if (compare(shift, "out"))
+      return 0;
+    else if (shift[17] == ':')
+      return 0;
+    else if (compare(shift, "goto"))
+      return 0;
+    else if (shift[17] == '=')
+      return 0;
+    else if (shift[17] == '\t')
+      return 0;
+    else if (compare(shift, "for"))
+      return 0;
+    else if (compare(shift, "%call"))
+      return 0;
+    else
+      return 0;
+  }
+}
 
 void token(char* sourceadr, char* targetadr) {
   FILE * source = fopen(sourceadr, "r");
   FILE * target = fopen(targetadr, "w");
-  char shift[18];
+  char shift[19]; //19 so that the last character is \0 for printf purposes
   int i;
-  
+
+  shift[18] = '\0';
   for (i = 0; i < 18; i++)
     shift[i] = '\0';
-  for (; shift[16] != EOF; shift[17] != EOF ?
-	 (shift[17] = fgetc(source)) : 1, tokeninc(shift)) {
+  for (; shift[16] != EOF; tokeninc(shift),
+       shift[17] != EOF ? (shift[17] = fgetc(source)) : 1)
     //checking shift[16] instead of [17] means
     //that you will have a chance to check for key words at the end of the file
     //moving cursor back means that you can just directly copy the file and,
@@ -92,9 +165,12 @@ void token(char* sourceadr, char* targetadr) {
     //because by definition token keywords must be concatenated together
     if (tokencheck(shift, TOKEN)) {
       fseek(target, tokencheck(shift, DPL), SEEK_CUR);
-      fprintf(target, "%c", tokencheck(shift));
+      fprintf(target, "%c", tokencheck(shift, TOKEN));
     }
-  }
+    else if (shift[17] != '\n')
+      fprintf(target, "%c", shift[17]);
+    else
+      fprintf(target, "\n");
   fprintf(target, "%c", ENDING);
   fclose(target);
   fclose(source);
