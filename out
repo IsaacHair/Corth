@@ -45,4 +45,4 @@ goto start
 		adr(0000, 4000) = y
 		for (f = 0; (!(z == 7))&&(!f); f = 1)
 			adr(4000+(x*y)+z, 7800+x*y)) = 0
-		goto
+		goto path[x+1]

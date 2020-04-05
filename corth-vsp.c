@@ -15,6 +15,7 @@
 #define TAB 'K'
 #define FOR 'L'
 #define ENDING 'M'
+#define ENDLN 'N'
 #define TOKEN 0
 #define DPL 1
 //displacement (tells tokencheck() to return negative length of token)
@@ -62,23 +63,36 @@ void tokeninc(char * shift) {
 }
 
 int compare(char * shift, char * object) {
-  int i, j, compare;
+  int i, j, val;
   if (object[0] != '%') {
-    compare = 1;
+    val = 1;
     for (i = 0; object[i] != '\0'; i++) ;
     i--;
     for (j = 16; i >= 0; j--, i--)
       if (shift[j] != object[i])
-	compare = 0;
+	val = 0;
     if (shift[17] >= 'a' && shift[17] <= 'z')
-      compare = 0;
+      val = 0;
     if (shift[j-1] >= 'a' && shift[j-1] <= 'z')
-      compare = 0;
-    return (compare);
+      val = 0;
+    return (val);
   }
   else {
-    if (shift[17] < 'a' || shift[17] > 'z')
-      return (0);
+    //Because of how this checks, macro calls must be the only thing on a line
+    //they are differentiated from variables because variables are only used
+    //as part of a larger statement.
+    //This has the added effect that you can declare a macro and a variable
+    //with the same name.
+    if ((shift[17] < 'a' || shift[17] > 'z') && !compare(shift, "int") &&
+	!compare(shift, "if") && !compare(shift, "else") && !compare(shift, "adr") &&
+	!compare(shift, "out") && !compare(shift, "goto") && !compare(shift, "for"))
+      for (i = 16, val = 0, j = 0; i >= 0; i--, j--)
+        if (shift[i] == '\t' || shift[i] == '\n')
+	  return val*j;
+	else if (shift[i] <= 'a' || shift[i] >= 'z')
+	  return 0;
+	else
+	  val = 1;
     else
       return (0);
   }
@@ -110,6 +124,8 @@ int tokencheck(char * shift, int select) {
       return FOR;
     else if (compare(shift, "%call"))
       return CALL;
+    else if (shift[17] == '\n')
+      return ENDLN;
     else
       return 0;
   }
@@ -117,26 +133,28 @@ int tokencheck(char * shift, int select) {
     if (shift[17] == '#')
       return 0;
     else if (compare(shift, "int"))
-      return 0;
+      return -3;
     else if (compare(shift, "if"))
-      return 0;
+      return -2;
     else if (compare(shift, "else"))
-      return 0;
+      return -4;
     else if (compare(shift, "adr"))
-      return 0;
+      return -3;
     else if (compare(shift, "out"))
-      return 0;
+      return -3;
     else if (shift[17] == ':')
       return 0;
     else if (compare(shift, "goto"))
-      return 0;
+      return -4;
     else if (shift[17] == '=')
       return 0;
     else if (shift[17] == '\t')
       return 0;
     else if (compare(shift, "for"))
-      return 0;
+      return -3;
     else if (compare(shift, "%call"))
+      return compare(shift, "%call");
+    else if (shift[17] == '\n')
       return 0;
     else
       return 0;
@@ -148,6 +166,7 @@ void token(char* sourceadr, char* targetadr) {
   FILE * target = fopen(targetadr, "w");
   char shift[19]; //19 so that the last character is \0 for printf purposes
   int i;
+  char * end;
 
   shift[18] = '\0';
   for (i = 0; i < 18; i++)
@@ -167,10 +186,11 @@ void token(char* sourceadr, char* targetadr) {
       fseek(target, tokencheck(shift, DPL), SEEK_CUR);
       fprintf(target, "%c", tokencheck(shift, TOKEN));
     }
-    else if (shift[17] != '\n')
-      fprintf(target, "%c", shift[17]);
-    else
-      fprintf(target, "\n");
+    else if (shift[17] != EOF) {
+      //doing the following ensures proper handling of line breaks
+      end = &(shift[17]);
+      fprintf(target, end);
+    }
   fprintf(target, "%c", ENDING);
   fclose(target);
   fclose(source);
