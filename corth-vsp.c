@@ -84,8 +84,9 @@ int compare(char * shift, char * object) {
     //This has the added effect that you can declare a macro and a variable
     //with the same name.
     if ((shift[17] < 'a' || shift[17] > 'z') && !compare(shift, "int") &&
-	!compare(shift, "if") && !compare(shift, "else") && !compare(shift, "adr") &&
-	!compare(shift, "out") && !compare(shift, "goto") && !compare(shift, "for"))
+	!compare(shift, "if") && !compare(shift, "else") &&
+	!compare(shift, "adr") && !compare(shift, "out") &&
+	!compare(shift, "goto") && !compare(shift, "for"))
       for (i = 16, val = 0, j = 0; i >= 0; i--, j--)
         if (shift[i] == '\t' || shift[i] == '\n')
 	  return val*j;
@@ -100,7 +101,7 @@ int compare(char * shift, char * object) {
 
 int tokencheck(char * shift, int select) {
   if (select == TOKEN) {
-    if (shift[17] == '#')
+    if (shift[16] == '#')
       return DEC;
     else if (compare(shift, "int"))
       return INT;
@@ -112,26 +113,26 @@ int tokencheck(char * shift, int select) {
       return ADR;
     else if (compare(shift, "out"))
       return OUT;
-    else if (shift[17] == ':')
+    else if (shift[16] == ':')
       return LABEL;
     else if (compare(shift, "goto"))
       return GOTO;
-    else if (shift[17] == '=')
+    else if (shift[16] == '=' && shift[17] != '=' && shift[15] != '=')
       return ASN;
-    else if (shift[17] == '\t')
+    else if (shift[16] == '\t')
       return TAB;
     else if (compare(shift, "for"))
       return FOR;
     else if (compare(shift, "%call"))
       return CALL;
-    else if (shift[17] == '\n')
+    else if (shift[16] == '\n')
       return ENDLN;
     else
       return 0;
   }
   else {
-    if (shift[17] == '#')
-      return 0;
+    if (shift[16] == '#')
+      return -1;
     else if (compare(shift, "int"))
       return -3;
     else if (compare(shift, "if"))
@@ -142,20 +143,20 @@ int tokencheck(char * shift, int select) {
       return -3;
     else if (compare(shift, "out"))
       return -3;
-    else if (shift[17] == ':')
-      return 0;
+    else if (shift[16] == ':')
+      return -1;
     else if (compare(shift, "goto"))
       return -4;
-    else if (shift[17] == '=')
-      return 0;
-    else if (shift[17] == '\t')
-      return 0;
+    else if (shift[16] == '=' && shift[17] != '=' && shift[15] != '=')
+      return -1;
+    else if (shift[16] == '\t')
+      return -1;
     else if (compare(shift, "for"))
       return -3;
     else if (compare(shift, "%call"))
       return compare(shift, "%call");
-    else if (shift[17] == '\n')
-      return 0;
+    else if (shift[16] == '\n')
+      return -1;
     else
       return 0;
   }
