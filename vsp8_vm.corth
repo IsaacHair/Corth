@@ -15,9 +15,9 @@ for (x = 0; x < 8; x++)
 	goto pathjump
 pathjump:
 if (adr())
-	goto (put[1])
+	goto put[1]
 else
-	goto (put[0])
+	goto put[0]
 for (y = 0; y < 2; y = y+1)
 	put[y]:
 	adr(8000)
@@ -34,7 +34,7 @@ for (x = 0; x < 8; x = x+1)
 		out(ffff, 1<<(x+8))
 	else
 		out(0000, 1<<(x+8))
-goto (start)
+goto start
 
 #develop()
 	if (adr(4000, 4000))
