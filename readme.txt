@@ -1,3 +1,5 @@
+Version 1:
+
 Need buffers for comments and malloc, macros, other macros, for loop,
 other for loop, evaluate, other evaluate, translation, and gotos.
 Remember to free memory at end. Possibly condense the huge number
@@ -120,3 +122,24 @@ Should yeild:
 Ok so this shouldn't be necessary when actually writing programs. You can simply avoid infinite
 loops within the macros, meaning that simply inserting macros to where they are called one by one
 will suffice for programming purposes.
+
+
+
+
+
+Version 2:
+
+First of all, there needs to be a command to read the input,
+which was completely missing from the syntax before.
+Just like before, whitespace doesn't matter except for tab
+deliniation of nested statements and newlines after each statement.
+To allow for statements to take up multiple lines, a backslash can
+be placed directly before a new line to tell the compiler to ignore
+that line break.
+The compiling process still starts by deleting all comments.
+Then, any key words are replaced with their corresponding tokens.
+This includes replacing "=" and "==", etc with their tokens.
+Then, any extra whitespace is removed.
+Whitespace corresponding to tab depth or statement endings is kept.
+Note that, if there is a '\', it and the newline after it will be removed.
+

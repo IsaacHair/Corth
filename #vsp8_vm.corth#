@@ -1,12 +1,15 @@
 /*lsb is bit zero; msb is bit 7*/
-int x, y, z, f
+int (x, y, z, f);
 start:
-for x = 0; x < 8; x = x+1
-	if adr 0000+x
+for (x = 0; x < 8; x = x+1) {
+	if (adr(0000+x)) {
 		adr() = 0
-	else
+	}
+	else {
 		adr() = 1
 		goto path
+	}
+}
 path:
 adr(c000) = 0
 for (x = 0; x < 8; x++)

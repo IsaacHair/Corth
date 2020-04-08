@@ -2,5 +2,5 @@
 #include <stdlib.h>
 
 int main() {
-  
-}
+  printf("%x\n", (int*)4543);
+  return (
