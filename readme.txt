@@ -137,9 +137,24 @@ To allow for statements to take up multiple lines, a backslash can
 be placed directly before a new line to tell the compiler to ignore
 that line break.
 The compiling process still starts by deleting all comments.
+Along with comments, '\' is removed and the newline after it is
+replaced with a space.
 Then, any key words are replaced with their corresponding tokens.
-This includes replacing "=" and "==", etc with their tokens.
-Then, any extra whitespace is removed.
-Whitespace corresponding to tab depth or statement endings is kept.
-Note that, if there is a '\', it and the newline after it will be removed.
-
+This includes replacing "=" and "==" and "," and "\n" etc
+with their tokens.
+During this process, if something is not a token, triangular braces
+are put around it. A token indicating its type is placed directly
+before it.
+Parenthesis around expressions are kept.
+Tabs are special in that they are replaced by curly braces denoting
+where blocks of code begin and end.
+Square braces, which indicate concatenation of a variable to a label,
+are kept as they appear.
+Basically this process will be tuned until everything can be neatly
+converted into token form.
+A lot of this process involves pre-evaluation of some statements,
+like labels, so that tokens can appear in a neat and easy to decode
+order.
+This is going to take some thought and experimentation but should produce
+a modified version of the code that can be manipulated easily during the
+rest of the compiling process.
