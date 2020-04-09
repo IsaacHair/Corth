@@ -1,5 +1,6 @@
 
-int (x, y, z, f)
+int (x, y, z)
+int (f)
 start:
 for (x = 0; x < 8; x = x+1)
 	if (adr(0000+x))

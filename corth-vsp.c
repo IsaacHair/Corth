@@ -43,58 +43,108 @@ _Bool compare(char* shift, char* object) {
   return (result);
 }
 
-#define FOR "\001"
-#define LABEL "\002"
-#define GOTO "\003"
-#define IF "\004"
-#define ELSE "\005"
-#define ADR "\006"
-#define OUT "\007"
-#define IN "\010"
-#define ASN "\011"
-#define INT "\012"
+#define FOR 65
+#define LABEL 66
+#define GOTO 67
+#define IF 68
+#define ELSE 69
+#define ADR 70
+#define OUT 71
+#define IN 72
+#define ASN 73
+#define INT 74
+
+int chunk(char* shift, char* comm) {
+  //grabs an expression that is not a token;
+  //the ending spacer character is kept and the beginning one is not
+  //eg "int (shit, damn)" processes to "damn)" instead of " damn)" or " damn"
+  //only don't send last character if it is EOF
+  int i, j;
+
+  for (i = SLAST-1; i >= 0 && ((shift[i] >= 'a' && shift[i] <= 'z') ||
+			       shift[i] == '[' || shift[i] == ']');
+       i--) ;
+  for (i++, j = 0; i <= SLAST; i++, j++)
+    if (shift[i] != EOF)
+      comm[j] = shift[i];
+  comm[j] = '\0';
+  return j;
+}
 
 int find(char* shift, char* comm) {
-  if (compare(shift, "int"))
-    ret = INT;
-  else if (compare(shift, "for"))
-    ret = FOR;
-  /*else if (compare(shift, "goto"))
-    return GOTO;
-  else if (compare(shift, "if"))
-    return IF;
-  else if (compare(shift, "else"))
-    return ELSE;
-  else if (compare(shift, "adr"))
-    return ADR;
-  else if (compare(shift, "out"))
-    return OUT;
-  else if (compare(shift, "in"))
-    return IN;
+  if (compare(shift, "int")) {
+    comm[0] = INT;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "for")) {
+    comm[0] = FOR;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "goto")) {
+    comm[0] = GOTO;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "if")) {
+    comm[0] = IF;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 1;
+  }
+  else if (compare(shift, "else")) {
+    comm[0] = ELSE;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "adr")) {
+    comm[0] = ADR;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "out")) {
+    comm[0] = OUT;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
+  else if (compare(shift, "in")) {
+    comm[0] = IN;
+    if (shift[SLAST] != EOF)
+      comm[1] = shift[SLAST];
+    return 2;
+  }
   else if ((shift[SLAST] > 'z' || shift[SLAST] < 'a') &&
 	   shift[SLAST] != '[' && shift[SLAST] != ']')
-	   return ('c');*/
+    return (chunk(shift, comm));
   else
     return 0;
-
-  return 1;
 }
 
 void token(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
-  FILE* tfd = fopen(t, "w");
-  char shift[SLEN+1];
-  char comm[SLEN+1];
+  FILE* tfd = fopen(t, "wb");
+  char shift[SLAST+2];
+  char comm[SLAST+2];
   int i;
+  shift[SLAST+1] = '\0'; //diagnostic purposes; allows string to be printf-ed
+  comm[SLAST+1] = '\0';
   
-  for (i = 0; i < SLEN; i++)
-    shift[i] = ' ';
-  for (shift[SLEN] = fgetc(sfd); shift[SLEN-1] != EOF;
-       shift[SLEN] = fgetc(sfd)) {
-    for (i = 0; i < SLEN-1; i++)
+  for (i = 0; i <= SLAST; i++)
+    shift[i] = comm[i] = ' ';
+  for (; shift[SLAST-1] != EOF;) {
+    for (i = 0; i <= SLAST-1; i++)
       shift[i] = shift[i+1];
-    if (find(shift, comm))
-      fwrite(
+    shift[SLAST] = fgetc(sfd);
+    find(shift, comm);
+    fwrite(comm, 1, find(shift, comm), tfd);
+  }
   
   fclose(sfd);
   fclose(tfd);

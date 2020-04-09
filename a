@@ -1,0 +1,49 @@
+
+J (x, y, z)
+J (f)
+start:
+A (x = 0; x < 8; x = x+1)
+	D(F(0000+x))
+		F() = 0
+	E
+		F() = 1
+		C path
+path:
+F(c000) = 0
+A (x = 0; x < 8; x++)
+	path[x]:
+	F(0000+x)
+	C pathjump
+pathjump:
+D(F())
+	C put[1]
+E
+	C put[0]
+A (y = 0; y < 2; y = y+1)
+	put[y]:
+	F(8000)
+	A (x = 8, z = 0; z < 8; z = z+1, x = x<<1)
+		develop()
+path[8]:
+A (x = 0; x < 8; x++)
+	D(F(x, 7))
+		G(ffff, 1<<x)
+	E
+		G(0000, 1<<x)
+A (x = 0; x < 8; x = x+1)
+	D(F(0000+x))
+		G(ffff, 1<<(x+8))
+	E
+		G(0000, 1<<(x+8))
+C start
+
+#develop()
+	D(F(4000, 4000))
+		D(F(0000, 4000))
+			F(ffff, x*y)
+	E
+		F() = 1
+		F(0000, 4000) = y
+		A (f = 0; (!(z == 7))&&(!f); f = 1)
+			F(4000+(x*y)+z, 7800+x*y)) = 0
+		C (path[x+1])]]
