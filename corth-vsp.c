@@ -27,10 +27,6 @@ void comment(char* s, char* t) {
 
 #define SLAST 17
 
-char* chunk(char* shift) {
-  return ("hello");
-}
-
 _Bool compare(char* shift, char* object) {
   int i, j;
   _Bool result;
@@ -58,11 +54,11 @@ _Bool compare(char* shift, char* object) {
 #define ASN "\011"
 #define INT "\012"
 
-char* find(char* shift) {
+char find(char* shift, char* ret) {
   if (compare(shift, "int"))
-    return INT;
+    ret = "int";
   else if (compare(shift, "for"))
-    return FOR;
+    ret = "goto";
   else if (compare(shift, "goto"))
     return GOTO;
   else if (compare(shift, "if"))
@@ -77,27 +73,15 @@ char* find(char* shift) {
     return IN;
   else if ((shift[SLAST] > 'z' || shift[SLAST] < 'a') &&
 	   shift[SLAST] != '[' && shift[SLAST] != ']')
-    return ("hello");
+    return ('c');
+
+  return (0);
 }
 
 void token(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
   FILE* tfd = fopen(t, "w");
-  char c;
-  int i;
-  char shift[SLAST+2];
-  shift[SLAST+1] = '\0';
-
-  for (i = 0; i <= SLAST; i++)
-    shift[i] = ' ';
   
-  for (c = fgetc(sfd); shift[SLAST] != EOF; c = fgetc(sfd)) {
-    for (i = 0; i < SLAST; i++)
-      shift[i] = shift[i+1];
-    shift[SLAST] = c;
-    if (findcopy(shift, buff))
-      fprintf(tfd, find(shift));
-  }
 
   fclose(sfd);
   fclose(tfd);
