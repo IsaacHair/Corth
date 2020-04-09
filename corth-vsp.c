@@ -7,7 +7,7 @@ void comment(char* s, char* t) {
   char c;
   _Bool comment;
   
-  for (c = fgetc(sfd); c != EOF; c = fgetc(sfd))
+  for (c = fgetc(sfd), comment = 0; c != EOF; c = fgetc(sfd))
     if (c == '/')
       if ((c = fgetc(sfd)) == '*')
 	comment = 1;
@@ -54,12 +54,12 @@ _Bool compare(char* shift, char* object) {
 #define ASN "\011"
 #define INT "\012"
 
-char find(char* shift, char* ret) {
+int find(char* shift, char* comm) {
   if (compare(shift, "int"))
-    ret = "int";
+    ret = INT;
   else if (compare(shift, "for"))
-    ret = "goto";
-  else if (compare(shift, "goto"))
+    ret = FOR;
+  /*else if (compare(shift, "goto"))
     return GOTO;
   else if (compare(shift, "if"))
     return IF;
@@ -73,16 +73,29 @@ char find(char* shift, char* ret) {
     return IN;
   else if ((shift[SLAST] > 'z' || shift[SLAST] < 'a') &&
 	   shift[SLAST] != '[' && shift[SLAST] != ']')
-    return ('c');
+	   return ('c');*/
+  else
+    return 0;
 
-  return (0);
+  return 1;
 }
 
 void token(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
   FILE* tfd = fopen(t, "w");
+  char shift[SLEN+1];
+  char comm[SLEN+1];
+  int i;
   
-
+  for (i = 0; i < SLEN; i++)
+    shift[i] = ' ';
+  for (shift[SLEN] = fgetc(sfd); shift[SLEN-1] != EOF;
+       shift[SLEN] = fgetc(sfd)) {
+    for (i = 0; i < SLEN-1; i++)
+      shift[i] = shift[i+1];
+    if (find(shift, comm))
+      fwrite(
+  
   fclose(sfd);
   fclose(tfd);
 }

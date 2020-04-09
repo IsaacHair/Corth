@@ -158,3 +158,6 @@ order.
 This is going to take some thought and experimentation but should produce
 a modified version of the code that can be manipulated easily during the
 rest of the compiling process.
+
+NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
+CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.
