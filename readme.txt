@@ -158,6 +158,19 @@ order.
 This is going to take some thought and experimentation but should produce
 a modified version of the code that can be manipulated easily during the
 rest of the compiling process.
+The max length for labels, macros, and variables is 16 characters. However,
+if there is a [, this length can be infinitely long, only being limited
+to 16 characters after the ].
+However, brackets must contain an expression.
+Note: to avoid ambiguity, numbers are always written as hex numbers, with
+preceding zeros optional. Max length for a number is 16 digits.
+To avoid ambiguity between numbers and variables/labels/macros
+(eg number "aa" vs variable "aa"), if a number starts with a letter
+(a-f), a zero must be placed in front.
+This rule is automatically respected in cases where a variable is being
+inserted into brackets.
+Also going to read as a text file while deleting comments, then treat
+as binary after that.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

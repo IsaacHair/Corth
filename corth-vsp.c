@@ -43,16 +43,16 @@ _Bool compare(char* shift, char* object) {
   return (result);
 }
 
-#define FOR 65
-#define LABEL 66
-#define GOTO 67
-#define IF 68
-#define ELSE 69
-#define ADR 70
-#define OUT 71
-#define IN 72
-#define ASN 73
-#define INT 74
+#define FOR 1
+#define LABEL 2
+#define GOTO 3
+#define IF 4
+#define ELSE 5
+#define ADR 6
+#define OUT 7
+#define IN 8
+#define ASN 9
+#define INT 10
 
 int chunk(char* shift, char* comm) {
   //grabs an expression that is not a token;
@@ -62,8 +62,7 @@ int chunk(char* shift, char* comm) {
   int i, j;
 
   for (i = SLAST-1; i >= 0 && ((shift[i] >= 'a' && shift[i] <= 'z') ||
-			       shift[i] == '[' || shift[i] == ']');
-       i--) ;
+			       shift[i] == '[' || shift[i] == ']'); i--) ;
   for (i++, j = 0; i <= SLAST; i++, j++)
     if (shift[i] != EOF)
       comm[j] = shift[i];
@@ -94,7 +93,7 @@ int find(char* shift, char* comm) {
     comm[0] = IF;
     if (shift[SLAST] != EOF)
       comm[1] = shift[SLAST];
-    return 1;
+    return 2;
   }
   else if (compare(shift, "else")) {
     comm[0] = ELSE;
@@ -127,8 +126,8 @@ int find(char* shift, char* comm) {
     return 0;
 }
 
-void token(char* s, char* t) {
-  FILE* sfd = fopen(s, "r");
+void firsttoken(char* s, char* t) {
+  FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
   char shift[SLAST+2];
   char comm[SLAST+2];
@@ -150,6 +149,16 @@ void token(char* s, char* t) {
   fclose(tfd);
 }
 
+void spacedelete(char * s, char * t) {
+  FILE * sfd = fopen(s, "r");
+  FILE * tfd = fopen(t, "wb");
+  char c;
+  
+  while (fread(&c, 1, 1, sfd))
+    if (c != ' ')
+      fwrite(&c, 1, 1, tfd);
+}
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     printf("usage: cvm <source> <target> <buffer>\n");
@@ -161,7 +170,9 @@ int main(int argc, char** argv) {
   char* b = argv[3];
 
   comment(s, t);
-  token(t, b);
-
+  firsttoken(t, b);
+  //spacedelete(b, t);
+  //secondtoken(t, b);
+  
   return 0;
 }
