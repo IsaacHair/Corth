@@ -171,6 +171,9 @@ This rule is automatically respected in cases where a variable is being
 inserted into brackets.
 Also going to read as a text file while deleting comments, then treat
 as binary after that.
+Important: newlines are represented by a carriage return and then a line
+feed character in text files; to handle the files properly, it is best
+to replace this with a one character identification.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

@@ -1,6 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//tokens
+#define TSTART 65
+#define FOR    (TSTART+0)
+#define LABEL  (TSTART+1)
+#define GOTO   (TSTART+2)
+#define IF     (TSTART+3)
+#define ELSE   (TSTART+4)
+#define ADR    (TSTART+5)
+#define OUT    (TSTART+6)
+#define IN     (TSTART+7)
+#define ASN    (TSTART+8)
+#define INT    (TSTART+9)
+#define TAB    (TSTART+10)
+#define END    (TSTART+11)
+#define SEP    (TSTART+12)
+
+//index to last element of buffer
+#define SLAST 17
+
 void comment(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
   FILE* tfd = fopen(t, "w");
@@ -25,7 +44,36 @@ void comment(char* s, char* t) {
   fclose(tfd);
 }
 
-#define SLAST 17
+void flow(char* s, char* t) {
+  FILE * sfd = fopen(s, "r");
+  FILE * tfd = fopen(t, "wb");
+  char c;
+  int new;
+  
+  for (c = fgetc(sfd), new = 1; c != EOF; c = fgetc(sfd))
+    if (c == '\n' || c == 10 || c == 13 || c == ';') {
+      if (!new) {
+	c = END;
+	fwrite(&c, 1, 1, tfd);
+	new = 1;
+      }
+    }
+    else if (c == '\t') {
+      c = TAB;
+      fwrite(&c, 1, 1, tfd);
+    }
+    else if (c == ',') {
+      c = SEP;
+      fwrite(&c, 1, 1, tfd);
+    }
+    else {
+      new = 0;
+      fwrite(&c, 1, 1, tfd);
+    }
+  
+  fclose(sfd);
+  fclose(tfd);
+}
 
 _Bool compare(char* shift, char* object) {
   int i, j;
@@ -43,17 +91,6 @@ _Bool compare(char* shift, char* object) {
   return (result);
 }
 
-#define FOR 1
-#define LABEL 2
-#define GOTO 3
-#define IF 4
-#define ELSE 5
-#define ADR 6
-#define OUT 7
-#define IN 8
-#define ASN 9
-#define INT 10
-
 int chunk(char* shift, char* comm) {
   //grabs an expression that is not a token;
   //the ending spacer character is kept and the beginning one is not
@@ -63,9 +100,8 @@ int chunk(char* shift, char* comm) {
 
   for (i = SLAST-1; i >= 0 && ((shift[i] >= 'a' && shift[i] <= 'z') ||
 			       shift[i] == '[' || shift[i] == ']'); i--) ;
-  for (i++, j = 0; i <= SLAST; i++, j++)
-    if (shift[i] != EOF)
-      comm[j] = shift[i];
+  for (i++, j = 0; i <= SLAST && shift[i] != EOF; i++, j++)
+    comm[j] = shift[i];
   comm[j] = '\0';
   return j;
 }
@@ -137,7 +173,7 @@ void firsttoken(char* s, char* t) {
   
   for (i = 0; i <= SLAST; i++)
     shift[i] = comm[i] = ' ';
-  for (; shift[SLAST-1] != EOF;) {
+  for (; shift[SLAST] != EOF;) {
     for (i = 0; i <= SLAST-1; i++)
       shift[i] = shift[i+1];
     shift[SLAST] = fgetc(sfd);
@@ -150,13 +186,16 @@ void firsttoken(char* s, char* t) {
 }
 
 void spacedelete(char * s, char * t) {
-  FILE * sfd = fopen(s, "r");
+  FILE * sfd = fopen(s, "rb");
   FILE * tfd = fopen(t, "wb");
   char c;
   
   while (fread(&c, 1, 1, sfd))
     if (c != ' ')
       fwrite(&c, 1, 1, tfd);
+
+  fclose(sfd);
+  fclose(tfd);
 }
 
 int main(int argc, char** argv) {
@@ -170,9 +209,12 @@ int main(int argc, char** argv) {
   char* b = argv[3];
 
   comment(s, t);
-  firsttoken(t, b);
-  //spacedelete(b, t);
-  //secondtoken(t, b);
+  flow(t, b);
+  firsttoken(b, t);
+  spacedelete(t, b);
+  //secondtoken(b, t);
+  //while (bracket(t, b))
+  //  bracket(b, t);
   
   return 0;
 }
