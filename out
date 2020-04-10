@@ -1,1 +1,61 @@
-J (xM yM z)LJ (f)Lstart:LA (x = 0L x < 8L x = x+1)LKD (F(0000+x))LKKF() = 0LKELKKF() = 1LKKC pathLpath:LF(c000) = 0LA (x = 0L x < 8L x++)LKpath[x]:LKF(0000+x)LKC pathjumpLpathjump:LD (F())LKC put[1]LELKC put[0]LA (y = 0L y < 2L y = y+1)LKput[y]:LKF(8000)LKA (x = 8M z = 0L z < 8L z = z+1M x = x<<1)LKKdevelop()Lpath[8]:LA (x = 0L x < 8L x++)LKD (F(xM 7))LKKG(ffffM 1<<x)LKELKKG(0000M 1<<x)LA (x = 0L x < 8L x = x+1)LKD (F(0000+x))LKKG(ffffM 1<<(x+8))LKELKKG(0000M 1<<(x+8))LC startL#develop()LKD (F(4000M 4000))LKKD (F(0000M 4000))LKKKF(ffffM x*y)LKELKKF() = 1LKKF(0000M 4000) = yLKKA (f = 0L (!(z == 7))&&(!f)L f = 1)LKKKF(4000+(x*y)+zM 7800+x*y)) = 0LKKC (path[x+1])
+(xyz)
+(f)
+start:
+(x=0
+x<8
+x=x+1)
+	((0000+x))
+		()=0
+	
+		()=1
+		path
+path:
+(0c000)=0
+(x=0
+x<8
+x++)
+	path[x]:
+	(0000+x)
+	pathjump
+pathjump:
+(())
+	put[1]
+
+	put[0]
+(y=0
+y<2
+y=y+1)
+	put[y]:
+	(8000)
+	(x=8z=0
+z<8
+z=z+1x=x1)
+		develop()
+path[8]:
+(x=0
+x<8
+x++)
+	((x7))
+		(0ffff1x)
+	
+		(00001x)
+(x=0
+x<8
+x=x+1)
+	((0000+x))
+		(0ffff1(x+8))
+	
+		(00001(x+8))
+start
+#develop()
+	((40004000))
+		((00004000))
+			(0ffffx*y)
+	
+		()=1
+		(00004000)=y
+		(f=0
+(!(z7))(!f)
+f=1)
+			(4000+(x*y)+z7800+x*y))=0
+		(path[x+1])

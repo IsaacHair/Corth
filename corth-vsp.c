@@ -2,20 +2,50 @@
 #include <stdlib.h>
 
 //tokens
-#define TSTART 65
+#define TSTART 1
+
 #define FOR    (TSTART+0)
-#define LABEL  (TSTART+1)
-#define GOTO   (TSTART+2)
-#define IF     (TSTART+3)
-#define ELSE   (TSTART+4)
-#define ADR    (TSTART+5)
-#define OUT    (TSTART+6)
-#define IN     (TSTART+7)
-#define ASN    (TSTART+8)
-#define INT    (TSTART+9)
-#define TAB    (TSTART+10)
-#define END    (TSTART+11)
-#define SEP    (TSTART+12)
+#define LABEL  ':'
+#define GOTO   (TSTART+1)
+#define IF     (TSTART+2)
+#define ELSE   (TSTART+3)
+#define ADR    (TSTART+4)
+#define OUT    (TSTART+5)
+#define IN     (TSTART+6)
+#define ASN    '='
+#define INT    (TSTART+7)
+#define TAB    (TSTART+8)
+#define END    (TSTART+9)
+#define SEP    (TSTART+10)
+
+#define PS     '('
+#define PE     ')'
+#define SBS    '['
+#define SBE    ']'
+#define CBS    '{'
+#define CBE    '}'
+
+#define DIV    '/'
+#define MOD    '%'
+#define MUL    '*'
+#define ADD    '+'
+#define SUB    '-'
+#define SU     (TSTART+11)
+#define SD     (TSTART+12)
+#define BAND   '&'
+#define BOR    '|'
+#define BXOR   '^'
+
+#define LESS   '<'
+#define MORE   '>'
+#define ELESS  (TSTART+13)
+#define EMORE  (TSTART+14)
+#define EQL    (TSTART+15)
+#define NEQL   (TSTART+16)
+#define LAND   (TSTART+17)
+#define LOR    (TSTART+18)
+#define LXOR   (TSTART+19)
+#define NOT    '!'
 
 //index to last element of buffer
 #define SLAST 17
@@ -106,55 +136,26 @@ int chunk(char* shift, char* comm) {
   return j;
 }
 
+#define COMP(str, symb)				\
+  if (compare(shift, str)) {			\
+    comm[0] = symb;				\
+    if (shift[SLAST] != EOF) {			\
+      comm[1] = shift[SLAST];			\
+      return 2;					\
+    }						\
+    else					\
+      return 1;					\
+  }
+
 int find(char* shift, char* comm) {
-  if (compare(shift, "int")) {
-    comm[0] = INT;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "for")) {
-    comm[0] = FOR;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "goto")) {
-    comm[0] = GOTO;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "if")) {
-    comm[0] = IF;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "else")) {
-    comm[0] = ELSE;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "adr")) {
-    comm[0] = ADR;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "out")) {
-    comm[0] = OUT;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
-  else if (compare(shift, "in")) {
-    comm[0] = IN;
-    if (shift[SLAST] != EOF)
-      comm[1] = shift[SLAST];
-    return 2;
-  }
+  COMP("int", INT)
+  COMP("for", FOR)
+  COMP("goto", GOTO)
+  COMP("if", IF)
+  COMP("else", ELSE)
+  COMP("adr", ADR)
+  COMP("out", OUT)
+  COMP("in", IN)
   else if ((shift[SLAST] > 'z' || shift[SLAST] < 'a') &&
 	   shift[SLAST] != '[' && shift[SLAST] != ']')
     return (chunk(shift, comm));
@@ -168,7 +169,7 @@ void firsttoken(char* s, char* t) {
   char shift[SLAST+2];
   char comm[SLAST+2];
   int i;
-  shift[SLAST+1] = '\0'; //diagnostic purposes; allows string to be printf-ed
+  shift[SLAST+1] = '\0'; //diagnostic purposes; allows strings to be printf-ed
   comm[SLAST+1] = '\0';
   
   for (i = 0; i <= SLAST; i++)
@@ -198,6 +199,48 @@ void spacedelete(char * s, char * t) {
   fclose(tfd);
 }
 
+#define CHECK(ch0, ch1, symb)				\
+  if (c == ch0) {					\
+    if (fread(&c, 1, 1, sfd)) {				\
+      if (c == ch1) {					\
+	c = symb;					\
+	fwrite(&c, 1, 1, tfd);				\
+      }							\
+      else {						\
+	buff[1] = c;					\
+	fwrite(buff, 1, 2, tfd);			\
+      }							\
+    }							\
+    else {						\
+      fwrite(buff, 1, 1, tfd);				\
+    }							\
+    continue;						\
+  }
+
+void secondtoken(char* s, char* t) {
+  FILE * sfd = fopen(s, "rb");
+  FILE * tfd = fopen(t, "wb");
+  char c;
+  char buff[2];
+
+  while (fread(&c, 1, 1, sfd)) {
+    buff[0] = c;
+    CHECK('<', '<', SU)
+    CHECK('>', '>', SD)
+    CHECK('<', '=', ELESS)
+    CHECK('>', '=', EMORE)
+    CHECK('=', '=', EQL)
+    CHECK('!', '=', NEQL)
+    CHECK('&', '&', LAND)
+    CHECK('|', '|', LOR)
+    CHECK('^', '^', LXOR)
+    fwrite(&c, 1, 1, tfd);
+  }
+
+  fclose(sfd);
+  fclose(tfd);
+}
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     printf("usage: cvm <source> <target> <buffer>\n");
@@ -212,7 +255,7 @@ int main(int argc, char** argv) {
   flow(t, b);
   firsttoken(b, t);
   spacedelete(t, b);
-  //secondtoken(b, t);
+  secondtoken(b, t);
   //while (bracket(t, b))
   //  bracket(b, t);
   

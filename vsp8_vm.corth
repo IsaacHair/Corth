@@ -9,7 +9,7 @@ for (x = 0; x < 8; x = x+1)
 		adr() = 1
 		goto path
 path:
-adr(c000) = 0
+adr(0c000) = 0
 for (x = 0; x < 8; x++)
 	path[x]:
 	adr(0000+x)
@@ -27,12 +27,12 @@ for (y = 0; y < 2; y = y+1)
 path[8]:
 for (x = 0; x < 8; x++)
 	if (adr(x, 7))
-		out(ffff, 1<<x)
+		out(0ffff, 1<<x)
 	else
 		out(0000, 1<<x)
 for (x = 0; x < 8; x = x+1)
 	if (adr(0000+x))
-		out(ffff, 1<<(x+8))
+		out(0ffff, 1<<(x+8))
 	else
 		out(0000, 1<<(x+8))
 goto start
@@ -40,7 +40,7 @@ goto start
 #develop()
 	if (adr(4000, 4000))
 		if (adr(0000, 4000))
-			adr(ffff, x*y)
+			adr(0ffff, x*y)
 	else
 		adr() = 1
 		adr(0000, 4000) = y
