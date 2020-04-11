@@ -47,6 +47,11 @@
 #define LXOR   (TSTART+19)
 #define NOT    '!'
 
+#define NUM    (TSTART+20)
+#define NAME   (TSTART+21)
+#define BS     (TSTART+22)
+#define ES     (TSTART+23)
+
 //index to last element of buffer
 #define SLAST 17
 
@@ -241,6 +246,15 @@ void secondtoken(char* s, char* t) {
   fclose(tfd);
 }
 
+int groupdata(char* s, char* t) {
+  FILE * sfd = fopen(s, "rb");
+  FILE * tfd = fopen(t, "wb");
+  char c;
+  
+  fclose(sfd);
+  fclose(tfd);
+}
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     printf("usage: cvm <source> <target> <buffer>\n");
@@ -256,6 +270,7 @@ int main(int argc, char** argv) {
   firsttoken(b, t);
   spacedelete(t, b);
   secondtoken(b, t);
+  groupdata(t, b);
   //while (bracket(t, b))
   //  bracket(b, t);
   

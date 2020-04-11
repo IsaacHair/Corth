@@ -167,13 +167,18 @@ preceding zeros optional. Max length for a number is 16 digits.
 To avoid ambiguity between numbers and variables/labels/macros
 (eg number "aa" vs variable "aa"), if a number starts with a letter
 (a-f), a zero must be placed in front.
-This rule is automatically respected in cases where a variable is being
-inserted into brackets.
+The preceding zeros are deleted automatically during the compiling process,
+so you don't need to worry whether path[x] will be called path[0a] or
+path[a] because all preceding zeros will be deleted before macro/label/
+variable calls occur.
 Also going to read as a text file while deleting comments, then treat
 as binary after that.
 Important: newlines are represented by a carriage return and then a line
 feed character in text files; to handle the files properly, it is best
 to replace this with a one character identification.
+Arrays can be declared; declaring an array simply involves placing brackets
+after the label and writing the size; there can be as many dimensions
+as you want.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.
