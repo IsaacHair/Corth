@@ -18,6 +18,7 @@
 #define END    (TSTART+9)
 #define SEP    (TSTART+10)
 #define FEND   (TSTART+11)
+#define DEF    '#'
 
 #define PS     '('
 #define PE     ')'
@@ -383,6 +384,20 @@ void bracket(char* s, char* t) {
   fclose(sfd);
 }
 
+voidmacrobuffer(char* s, char* t) {
+  FILE* sfd = fopen(s, "rb");
+  FILE* tfd = fopen(t, "wb");
+  char c;
+
+  while (fread(&c, 1, 1, sfd))
+    if (c == DEF)
+      //malloc
+      1;
+
+  fclose(sfd);
+  fclose(tfd);
+}
+    
 int main(int argc, char** argv) {
   if (argc != 4) {
     printf("usage: cvm <source> <target> <buffer>\n");
@@ -400,7 +415,10 @@ int main(int argc, char** argv) {
   secondtoken(b, t);
   groupdata(t, b);
   bracket(b, t);
-  //recursive stuff
+  macrobuffer(t, b);
+  /*insertevaluate(b, t);
+  translateinc(t, b);
+  programpoint(b, t);*/
   
   return 0;
 }
