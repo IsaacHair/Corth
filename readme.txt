@@ -246,6 +246,10 @@ Note that names can contain up to 16 characters. However, there can be
 infinitely many dimensions on an array or a label, but these must be marked
 with square brackets. Also, the name can't continue after the label.
 So, as[11]ds would be bad syntax.
+All values, whether pointers or constants or integers or anything, are stored
+as unsigned 8 byte numbers. During the last step of conversion to assembly,
+any numbers longer than two bytes are chopped off and only the last two bytes
+are used.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

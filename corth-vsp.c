@@ -77,15 +77,15 @@ struct rtype {
   //in the zeroth dimes the value of the second dimension
   //This can be expanded to apply to between 0 dimensions and the max possible
   //with the ram available on the compiling computer
-  long int *dimension;
-  long int *value;
+  unsigned long int *dimension;
+  unsigned long int *value;
 } *ram;
 int rcount;
 
 //label buffer
 struct ltype {
   char label[17];
-  long int *address;
+  unsigned long int *address;
 } *label;
 int lcount;
 
@@ -485,9 +485,9 @@ void macrobuffer(char* s, char* t) {
   fclose(tfd);
 }
 
-long int hexstrlong(char* str) {
+unsigned long int hexstrlong(char* str) {
   int i;
-  long int ret;
+  unsigned long int ret;
 
   for (i = ret = 0; str[i] != '\0' && i < 16; ret<<4, i++)
     if (str[i] >= '0' && str[i] <= '9')
@@ -502,8 +502,8 @@ void variable(char* s, char* t) {
   FILE* tfd = fopen(t, "wb");
   char c;
   char buff[17];
-  long int val;
-  long int total;
+  unsigned long int val;
+  unsigned long int total;
   int i;
   int cont;
 
@@ -518,14 +518,14 @@ void variable(char* s, char* t) {
 	cont = strgrab(buff, sfd);
 	val = hexstrlong(buff);
 	if (ram[rcount].dimension == NULL)
-	  ram[rcount].dimension = malloc(sizeof(long int));
+	  ram[rcount].dimension = malloc(sizeof(unsigned long int));
 	else
 	  ram[rcount].dimension = realloc(ram[rcount].dimension,
-					  sizeof(long int)*(i+1));
+					  sizeof(unsigned long int)*(i+1));
 	ram[rcount].dimension[i] = val;
 	total *= val;
       }
-      ram[rcount].value = malloc(total*sizeof(long int));
+      ram[rcount].value = malloc(total*sizeof(unsigned long int));
       rcount++;
       while (c != END)
 	fread(&c, 1, 1, sfd);
