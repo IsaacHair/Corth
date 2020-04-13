@@ -4,20 +4,21 @@
 //tokens
 #define TSTART 65
 
-#define FOR    (TSTART+0)
+#define TERM   '\0'
+#define FOR    (TSTART+1)
 #define LABEL  ':'
-#define GOTO   (TSTART+1)
-#define IF     (TSTART+2)
-#define ELSE   (TSTART+3)
-#define ADR    (TSTART+4)
-#define OUT    (TSTART+5)
-#define IN     (TSTART+6)
+#define GOTO   (TSTART+2)
+#define IF     (TSTART+3)
+#define ELSE   (TSTART+4)
+#define ADR    (TSTART+5)
+#define OUT    (TSTART+6)
+#define IN     (TSTART+7)
 #define ASN    '='
-#define INT    (TSTART+7)
-#define TAB    (TSTART+8)
-#define END    (TSTART+9)
-#define SEP    (TSTART+10)
-#define FEND   (TSTART+11)
+#define INT    (TSTART+8)
+#define TAB    (TSTART+9)
+#define END    (TSTART+10)
+#define SEP    (TSTART+11)
+#define FEND   (TSTART+12)
 #define DEF    '#'
 
 #define PS     '('
@@ -32,27 +33,27 @@
 #define MUL    '*'
 #define ADD    '+'
 #define SUB    '-'
-#define SU     (TSTART+12)
-#define SD     (TSTART+13)
+#define SU     (TSTART+13)
+#define SD     (TSTART+14)
 #define BAND   '&'
 #define BOR    '|'
 #define BXOR   '^'
 
 #define LESS   '<'
 #define MORE   '>'
-#define ELESS  (TSTART+14)
-#define EMORE  (TSTART+15)
-#define EQL    (TSTART+16)
-#define NEQL   (TSTART+17)
-#define LAND   (TSTART+18)
-#define LOR    (TSTART+19)
-#define LXOR   (TSTART+20)
+#define ELESS  (TSTART+15)
+#define EMORE  (TSTART+16)
+#define EQL    (TSTART+17)
+#define NEQL   (TSTART+18)
+#define LAND   (TSTART+19)
+#define LOR    (TSTART+20)
+#define LXOR   (TSTART+21)
 #define NOT    '!'
 
-#define NUM    (TSTART+21)
-#define NAME   (TSTART+22)
-#define BS     (TSTART+23)
-#define ES     (TSTART+24)
+#define NUM    (TSTART+22)
+#define NAME   (TSTART+23)
+#define BS     (TSTART+24)
+#define ES     (TSTART+25)
 
 //index to last element of buffer
 #define SLAST 17
@@ -384,18 +385,64 @@ void bracket(char* s, char* t) {
   fclose(sfd);
 }
 
-voidmacrobuffer(char* s, char* t) {
+struct mtype {
+  char label[17];
+  char* body;
+} *macro;
+int mcount;
+
+void macrobuffer(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
   char c;
+  int i, j, depth;
+  _Bool notend;
 
-  while (fread(&c, 1, 1, sfd))
-    if (c == DEF)
-      //malloc
-      1;
+  for (macro = NULL, mcount = 0; fread(&c, 1, 1, sfd);)
+    if (c == DEF) {
+      if (macro == NULL)
+	macro = malloc(sizeof(struct mtype));
+      else
+	macro = realloc(macro, sizeof(struct mtype)*(mcount+1));
+      for (i = 0; i < 16; i++) {
+	fread(&c, 1, 1, sfd);
+	if (c > 'z' || c < 'a') {
+	  macro[mcount].label[i] = '\0';
+	  break;
+	}
+	if (i == 16)
+	  macro[mcount].label[i] = '\0';
+	macro[mcount].label[i] = c;
+      }
+      while (c != END)
+	fread(&c, 1, 1, sfd);
+      for (i = depth = 0, notend = fread(&c, 1, 1, sfd); (depth || !i) &&
+	     notend; notend = fread(&c, 1, 1, sfd), i++)
+        if (c == CBS)
+	  depth++;
+	else if (c == CBE)
+	  depth--;
+      fseek(sfd, -i, SEEK_CUR);
+      macro[mcount].body = (char*) malloc(i+1);
+      for (j = 0, fread(&c, 1, 1, sfd); i > 0; i--, j++, fread(&c, 1, 1, sfd))
+	macro[mcount].body[j] = c;
+      macro[mcount].body[j] = TERM;
+      mcount++;
+      fseek(sfd, -1, SEEK_CUR);
+    }
+    else
+      fwrite(&c, 1, 1, tfd);
 
   fclose(sfd);
   fclose(tfd);
+}
+
+void freemacros() {
+  int i;
+
+  for (i = 0; i < mcount; i++)
+    free(macro[i].body);
+  free(macro);
 }
     
 int main(int argc, char** argv) {
@@ -415,10 +462,11 @@ int main(int argc, char** argv) {
   secondtoken(b, t);
   groupdata(t, b);
   bracket(b, t);
-  macrobuffer(t, b);
+  macrobuffer(t, b); 
   /*insertevaluate(b, t);
   translateinc(t, b);
   programpoint(b, t);*/
+  freemacros();
   
   return 0;
 }
