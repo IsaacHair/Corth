@@ -77,15 +77,15 @@ struct rtype {
   //in the zeroth dimes the value of the second dimension
   //This can be expanded to apply to between 0 dimensions and the max possible
   //with the ram available on the compiling computer
-  long long int *dimension;
-  long long int *value;
+  long int *dimension;
+  long int *value;
 } *ram;
 int rcount;
 
 //label buffer
 struct ltype {
   char label[17];
-  long long int *address;
+  long int *address;
 } *label;
 int lcount;
 
@@ -420,24 +420,33 @@ int strprocess(char* str, FILE* stream) {
   return 0;
 }
 
-void strgrab(char* str, FILE* stream) {
+int strgrab(char* str, FILE* stream) {
   int i;
   char c;
+  _Bool notend;
   
   while (fread(&c, 1, 1, stream))
     if (c == NUM || c == NAME)
       break;
-  fseek(sfd, 1, SEEK_CUR);
+  fseek(stream, 1, SEEK_CUR);
   fread(&c, 1, 1, stream);
-  for (i = 0; fread(&c, 1, 1, stream) && i < 16; i++) {
-    if (c == ES || c == SBS) {
+  for (i = 0, notend = fread(&c, 1, 1, stream);
+       notend && i < 16; i++, notend = fread(&c, 1, 1, stream)) {
+    if (c == ES) {
       str[i] = '\0';
-      break;
+      return ES;
+    }
+    else if (c == SBS) {
+      str[i] = '\0';
+      return SBS;
     }
     str[i] = c;
   }
-  if (i == 16)
-    str[i] = '\0';
+  str[i] = '\0';
+  if (c == ES)
+    return ES;
+  else
+    return SBS;
 }
 
 void macrobuffer(char* s, char* t) {
@@ -476,15 +485,54 @@ void macrobuffer(char* s, char* t) {
   fclose(tfd);
 }
 
+long int hexstrlong(char* str) {
+  int i;
+  long int ret;
+
+  for (i = ret = 0; str[i] != '\0' && i < 16; ret<<4, i++)
+    if (str[i] >= '0' && str[i] <= '9')
+      ret += str[i]-'0';
+    else
+      ret += str[i]-'a'+10;
+  return ret;
+}
+
 void variable(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
   char c;
-  long long int i;
+  char buff[17];
+  long int val;
+  long int total;
+  int i;
+  int cont;
 
-  while (fread(&c, 1, 1, sfd))
-    if (c == INT)
-      ;
+  for (ram = NULL, rcount = 0; fread(&c, 1, 1, sfd);)
+    if (c == INT) {
+      if (ram == NULL)
+	ram = malloc(sizeof(struct rtype));
+      else
+	ram = realloc(ram, sizeof(struct rtype)*(rcount+1));
+      cont = strgrab(ram[rcount].label, sfd);
+      for (i = 0, total = 1, ram[rcount].dimension = NULL; cont == SBS; i++) {
+	cont = strgrab(buff, sfd);
+	val = hexstrlong(buff);
+	if (ram[rcount].dimension == NULL)
+	  ram[rcount].dimension = malloc(sizeof(long int));
+	else
+	  ram[rcount].dimension = realloc(ram[rcount].dimension,
+					  sizeof(long int)*(i+1));
+	ram[rcount].dimension[i] = val;
+	total *= val;
+      }
+      ram[rcount].value = malloc(total*sizeof(long int));
+      rcount++;
+      while (c != END)
+	fread(&c, 1, 1, sfd);
+    }
+    else
+      fwrite(&c, 1, 1, tfd);
+      
   fclose(sfd);
   fclose(tfd);
 }
@@ -495,6 +543,10 @@ void freemacrosvariables() {
   for (i = 0; i < mcount; i++)
     free(macro[i].body);
   free(macro);
+  for (i = 0; i < rcount; i++) {
+    free(ram[i].dimension);
+    free(ram[i].value);
+  }
   free(ram);
 }
     
