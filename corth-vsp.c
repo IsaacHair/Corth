@@ -58,6 +58,20 @@
 //index to last element of buffer
 #define SLAST 17
 
+//macro buffer
+struct mtype {
+  char label[17];
+  char* body;
+} *macro;
+int mcount;
+
+//variable buffer
+struct rtype {
+  char label[17];
+  long long int *value;
+} *ram;
+int rcount;
+
 void comment(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
   FILE* tfd = fopen(t, "w");
@@ -385,12 +399,6 @@ void bracket(char* s, char* t) {
   fclose(sfd);
 }
 
-struct mtype {
-  char label[17];
-  char* body;
-} *macro;
-int mcount;
-
 void macrobuffer(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
@@ -437,12 +445,23 @@ void macrobuffer(char* s, char* t) {
   fclose(tfd);
 }
 
-void freemacros() {
+void variable(char* s, char* t) {
+  FILE* sfd = fopen(s, "rb");
+  FILE* tfd = fopen(t, "wb");
+  char c;
+  long long int i;
+
+  while (fread(&c, 1, 1, sfd)) {
+    if (c == INT) {
+      
+
+void freemacrosvariables() {
   int i;
 
   for (i = 0; i < mcount; i++)
     free(macro[i].body);
   free(macro);
+  free(ram);
 }
     
 int main(int argc, char** argv) {
@@ -462,14 +481,12 @@ int main(int argc, char** argv) {
   secondtoken(b, t);
   groupdata(t, b);
   bracket(b, t);
-  macrobuffer(t, b);
-
-  for (int i = 0; i < mcount; i++)
-    printf("macro: %s\n%s\n", macro[i].label, macro[i].body);
-  /*insertevaluate(b, t);
-  translateinc(t, b);
-  programpoint(b, t);*/
-  freemacros();
+  variable(t, b);
+  macrobuffer(b, t);
+  /*insertevaluate(t, b);
+  translateinc(b, t);
+  programpoint(t, b);*/
+  freemacrosvariables();
   
   return 0;
 }
