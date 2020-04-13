@@ -404,16 +404,17 @@ void macrobuffer(char* s, char* t) {
 	macro = malloc(sizeof(struct mtype));
       else
 	macro = realloc(macro, sizeof(struct mtype)*(mcount+1));
+      fseek(sfd, 2, SEEK_CUR);
       for (i = 0; i < 16; i++) {
 	fread(&c, 1, 1, sfd);
 	if (c > 'z' || c < 'a') {
 	  macro[mcount].label[i] = '\0';
 	  break;
 	}
-	if (i == 16)
-	  macro[mcount].label[i] = '\0';
 	macro[mcount].label[i] = c;
       }
+      if (i == 16)
+	macro[mcount].label[i] = '\0';
       while (c != END)
 	fread(&c, 1, 1, sfd);
       for (i = depth = 0, notend = fread(&c, 1, 1, sfd); (depth || !i) &&
@@ -428,7 +429,6 @@ void macrobuffer(char* s, char* t) {
 	macro[mcount].body[j] = c;
       macro[mcount].body[j] = TERM;
       mcount++;
-      fseek(sfd, -1, SEEK_CUR);
     }
     else
       fwrite(&c, 1, 1, tfd);
@@ -462,7 +462,10 @@ int main(int argc, char** argv) {
   secondtoken(b, t);
   groupdata(t, b);
   bracket(b, t);
-  macrobuffer(t, b); 
+  macrobuffer(t, b);
+
+  for (int i = 0; i < mcount; i++)
+    printf("macro: %s\n%s\n", macro[i].label, macro[i].body);
   /*insertevaluate(b, t);
   translateinc(t, b);
   programpoint(b, t);*/
