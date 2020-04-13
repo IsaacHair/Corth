@@ -242,6 +242,10 @@ However:
 There will be arrays.
 There will be assignment of preprocessor variables within loops, not just
 in the body of for loops.
+Note that names can contain up to 16 characters. However, there can be
+infinitely many dimensions on an array or a label, but these must be marked
+with square brackets. Also, the name can't continue after the label.
+So, as[11]ds would be bad syntax.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

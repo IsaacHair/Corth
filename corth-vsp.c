@@ -68,9 +68,26 @@ int mcount;
 //variable buffer
 struct rtype {
   char label[17];
+  //dimensions go from left to right; in path[33][66][0aa]
+  //33 is the value of dimension 0, 66 is the value of dimension 1
+  //and 0aa is the value of dimension 2
+  //when accessing memory, the zeroth dimension is added to the
+  //first dimension times the number of elements in the zeroth dimension
+  //and then added to the number of elements in the first times the number
+  //in the zeroth dimes the value of the second dimension
+  //This can be expanded to apply to between 0 dimensions and the max possible
+  //with the ram available on the compiling computer
+  long long int *dimension;
   long long int *value;
 } *ram;
 int rcount;
+
+//label buffer
+struct ltype {
+  char label[17];
+  long long int *address;
+} *label;
+int lcount;
 
 void comment(char* s, char* t) {
   FILE* sfd = fopen(s, "r");
@@ -399,6 +416,30 @@ void bracket(char* s, char* t) {
   fclose(sfd);
 }
 
+int strprocess(char* str, FILE* stream) {
+  return 0;
+}
+
+void strgrab(char* str, FILE* stream) {
+  int i;
+  char c;
+  
+  while (fread(&c, 1, 1, stream))
+    if (c == NUM || c == NAME)
+      break;
+  fseek(sfd, 1, SEEK_CUR);
+  fread(&c, 1, 1, stream);
+  for (i = 0; fread(&c, 1, 1, stream) && i < 16; i++) {
+    if (c == ES || c == SBS) {
+      str[i] = '\0';
+      break;
+    }
+    str[i] = c;
+  }
+  if (i == 16)
+    str[i] = '\0';
+}
+
 void macrobuffer(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
@@ -412,17 +453,7 @@ void macrobuffer(char* s, char* t) {
 	macro = malloc(sizeof(struct mtype));
       else
 	macro = realloc(macro, sizeof(struct mtype)*(mcount+1));
-      fseek(sfd, 2, SEEK_CUR);
-      for (i = 0; i < 16; i++) {
-	fread(&c, 1, 1, sfd);
-	if (c > 'z' || c < 'a') {
-	  macro[mcount].label[i] = '\0';
-	  break;
-	}
-	macro[mcount].label[i] = c;
-      }
-      if (i == 16)
-	macro[mcount].label[i] = '\0';
+      strgrab(macro[mcount].label, sfd);
       while (c != END)
 	fread(&c, 1, 1, sfd);
       for (i = depth = 0, notend = fread(&c, 1, 1, sfd); (depth || !i) &&
@@ -451,9 +482,12 @@ void variable(char* s, char* t) {
   char c;
   long long int i;
 
-  while (fread(&c, 1, 1, sfd)) {
-    if (c == INT) {
-      
+  while (fread(&c, 1, 1, sfd))
+    if (c == INT)
+      ;
+  fclose(sfd);
+  fclose(tfd);
+}
 
 void freemacrosvariables() {
   int i;
