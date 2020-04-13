@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 //tokens
-#define TSTART 1
+#define TSTART 65
 
 #define FOR    (TSTART+0)
 #define LABEL  ':'
@@ -17,6 +17,7 @@
 #define TAB    (TSTART+8)
 #define END    (TSTART+9)
 #define SEP    (TSTART+10)
+#define FEND   (TSTART+11)
 
 #define PS     '('
 #define PE     ')'
@@ -30,27 +31,27 @@
 #define MUL    '*'
 #define ADD    '+'
 #define SUB    '-'
-#define SU     (TSTART+11)
-#define SD     (TSTART+12)
+#define SU     (TSTART+12)
+#define SD     (TSTART+13)
 #define BAND   '&'
 #define BOR    '|'
 #define BXOR   '^'
 
 #define LESS   '<'
 #define MORE   '>'
-#define ELESS  (TSTART+13)
-#define EMORE  (TSTART+14)
-#define EQL    (TSTART+15)
-#define NEQL   (TSTART+16)
-#define LAND   (TSTART+17)
-#define LOR    (TSTART+18)
-#define LXOR   (TSTART+19)
+#define ELESS  (TSTART+14)
+#define EMORE  (TSTART+15)
+#define EQL    (TSTART+16)
+#define NEQL   (TSTART+17)
+#define LAND   (TSTART+18)
+#define LOR    (TSTART+19)
+#define LXOR   (TSTART+20)
 #define NOT    '!'
 
-#define NUM    (TSTART+20)
-#define NAME   (TSTART+21)
-#define BS     (TSTART+22)
-#define ES     (TSTART+23)
+#define NUM    (TSTART+21)
+#define NAME   (TSTART+22)
+#define BS     (TSTART+23)
+#define ES     (TSTART+24)
 
 //index to last element of buffer
 #define SLAST 17
@@ -86,12 +87,16 @@ void flow(char* s, char* t) {
   int new;
   
   for (c = fgetc(sfd), new = 1; c != EOF; c = fgetc(sfd))
-    if (c == '\n' || c == 10 || c == 13 || c == ';') {
+    if (c == '\n' || c == 10 || c == 13) {
       if (!new) {
 	c = END;
 	fwrite(&c, 1, 1, tfd);
 	new = 1;
       }
+    }
+    else if (c == ';') {
+      c = FEND;
+      fwrite(&c, 1, 1, tfd);
     }
     else if (c == '\t') {
       c = TAB;
@@ -105,6 +110,9 @@ void flow(char* s, char* t) {
       new = 0;
       fwrite(&c, 1, 1, tfd);
     }
+  c = END;
+  if (!new)
+    fwrite(&c, 1, 1, tfd);
   
   fclose(sfd);
   fclose(tfd);
@@ -250,9 +258,129 @@ int groupdata(char* s, char* t) {
   FILE * sfd = fopen(s, "rb");
   FILE * tfd = fopen(t, "wb");
   char c;
+  char buff[3];
+  int notend, close;
+
+  fread(&c, 1, 1, sfd);
+  while(1)
+    if (c >= '0' && c <= '9') {
+      buff[2] = c;
+      buff[1] = BS;
+      buff[0] = NUM;
+      fwrite(buff, 1, 3, tfd);
+      while ((notend = fread(&c, 1, 1, sfd)) != 0 &&
+	     ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+	fwrite(&c, 1, 1, tfd);
+      buff[0] = ES;
+      fwrite(buff, 1, 1, tfd);
+      if (!notend)
+        break;
+    }
+    else if (c >= 'a' && c <= 'z') {
+      buff[2] = c;
+      buff[1] = BS;
+      buff[0] = NAME;
+      fwrite(buff, 1, 3, tfd);
+      close = 1;
+      while ((notend = fread(&c, 1, 1, sfd)) != 0 &&
+	     ((c >= 'a' && c <= 'z') || c == '[')) {
+	fwrite(&c, 1, 1, tfd);
+	if (c == '[') {
+	  close = 0;
+	  notend = fread(&c, 1, 1, sfd);
+	  break;
+	}
+      }
+      if (close) {
+	buff[0] = ES;
+	fwrite(buff, 1, 1, tfd);
+      }
+      if (!notend)
+	break;
+    }
+    else if (c == ']') {
+      fwrite(&c, 1, 1, tfd);
+      close = 1;
+      while ((notend = fread(&c, 1, 1, sfd)) != 0 &&
+	     ((c >= 'a' && c <= 'z') || c == '[')) {
+	fwrite(&c, 1, 1, tfd);
+	if (c == '[') {
+	  close = 0;
+	  notend = fread(&c, 1, 1, sfd);
+	  break;
+	}
+      }
+      if (close) {
+	buff[0] = ES;
+	fwrite(buff, 1, 1, tfd);
+      }
+      if (!notend)
+	break;
+    }
+    else {
+      fwrite(&c, 1, 1, tfd);
+      notend = fread(&c, 1, 1, sfd);
+      if (!notend)
+	break;
+    }
   
   fclose(sfd);
   fclose(tfd);
+}
+
+void bracket(char* s, char* t) {
+  FILE * sfd = fopen(s, "rb");
+  FILE * tfd = fopen(t, "wb");
+  int ctab;
+  int ptab;
+  int i;
+  _Bool place;
+  char c;
+  char buff;
+  
+  for (ptab = ctab = place = 0; fread(&c, 1, 1, sfd);)
+    if (c == END) {
+      place = 1;
+      ptab = ctab;
+      ctab = 0;
+      fwrite(&c, 1, 1, tfd);
+    }
+    else if (c == TAB)
+      ctab++;
+    else if (place) {
+      place = 0;
+      if (ctab > ptab) {
+	i = ctab;
+	buff = CBS;
+	while (i > ptab) {
+	  fwrite(&buff, 1, 1, tfd);
+	  i--;
+	}
+	fwrite(&c, 1, 1, tfd);
+      }
+      else if (ctab < ptab) {
+	i = ctab;
+	buff = CBE;
+	while (i < ptab) {
+	  fwrite(&buff, 1, 1, tfd);
+	  i++;
+	}
+	fwrite(&c, 1, 1, tfd);
+      }
+      else
+	fwrite(&c, 1, 1, tfd);
+    }
+    else
+      fwrite(&c, 1, 1, tfd);
+  i = ptab;
+  buff = CBE;
+  while (i > 0) {
+    fwrite(&buff, 1, 1, tfd);
+    i--;
+  }
+
+  fclose(tfd);
+  fclose(sfd);
 }
 
 int main(int argc, char** argv) {
@@ -271,8 +399,8 @@ int main(int argc, char** argv) {
   spacedelete(t, b);
   secondtoken(b, t);
   groupdata(t, b);
-  //while (bracket(t, b))
-  //  bracket(b, t);
+  bracket(b, t);
+  //recursive stuff
   
   return 0;
 }

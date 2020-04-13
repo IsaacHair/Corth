@@ -179,6 +179,69 @@ to replace this with a one character identification.
 Arrays can be declared; declaring an array simply involves placing brackets
 after the label and writing the size; there can be as many dimensions
 as you want.
+The compiling process is going to require a recursive section for the
+[]s that can be added to labels and variables.
+Also, at this point, screw it, might as well add support for local variables
+and arguments passed to macros.
+Looks like recursively inserting macros/for loop bodies/values within []
+might not actually be powerful enough to resolve all cases of nesting.
+If the user states something like
+
+for (;myarray[table[x][y]+5a]; x = x+1)
+    myarray[table[x][y]+5a] = myarray[table[x][y]+4b]
+
+The for loop can't expand.
+BUT OH OK SO ITS FINE; you can't assign anything unless it is in a for loop.
+Wait what if you do
+
+int myarray[4aaa], table[10][10]
+for (;myarray[table[x][y]+5a]; x = x+1)
+    for (myarray[table[x][y]+5a] = myarray[table[x][y]+4b]; 0;)
+    	out(0000, 0000)
+
+Looks like what will need to happen is macros are pasted in as normal using
+recursion.
+Then, for loops are also evaluated recursively. Every time you reach a name
+containing [], so an array or a label or a goto, recursively collapse it
+and then return to handling the for loop based on that collapsed version.
+This works because [] statements never contain for loops or macro calls.
+For loops can contain macro calls and macros can contain for loops, however,
+so a different process is needed for them if things like this aren't banned
+
+int x
+for (x = 0; 0;)
+a
+
+#a
+    for (;x;)
+    	a
+
+In theory, since x is set to zero, this should never collapse into an infinite
+loop.
+However, blindly collapsing will cause this.
+Ok so maybe the protocol should be to start at the outer most nest level.
+If you get to a macro call, insert it.
+If you get to a [] expression, collapse it.
+If you get to a for loop, evaluate it.
+Inside the for loop, repeat the same process, and once you reach the end,
+return to the start of the for loop and check again.
+This allows statements like the one above to work.
+
+OH so by the way the second statement of the for loop, the conditional
+statement, is just looking for a non-zero value, and using operands like
+&& convert the values on either side to either 1 or 0 and deal with them.
+So x+value increments x by value.
+But x+(value&&othervalue) either increments x by 1 or nothing.
+Random note: if no goto statement appears at the end of the code, the next
+address is assumed to be 0000.
+
+So currently the finished version is going to be very bare bones.
+There will be no support for local variables/labels/macros.
+There will be no if-else statements for perprocessor variables.
+However:
+There will be arrays.
+There will be assignment of preprocessor variables within loops, not just
+in the body of for loops.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

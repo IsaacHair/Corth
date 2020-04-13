@@ -1,61 +1,1 @@
-(xyz)
-(f)
-start:
-(x=0
-x<8
-x=x+1)
-	((0000+x))
-		()=0
-	
-		()=1
-		path
-path:
-(0c000)=0
-(x=0
-x<8
-x++)
-	path[x]:
-	(0000+x)
-	pathjump
-pathjump:
-(())
-	put[1]
-
-	put[0]
-(y=0
-y<2
-y=y+1)
-	put[y]:
-	(8000)
-	(x=8z=0
-z<8
-z=z+1x=x1)
-		develop()
-path[8]:
-(x=0
-x<8
-x++)
-	((x7))
-		(0ffff1x)
-	
-		(00001x)
-(x=0
-x<8
-x=x+1)
-	((0000+x))
-		(0ffff1(x+8))
-	
-		(00001(x+8))
-start
-#develop()
-	((40004000))
-		((00004000))
-			(0ffffx*y)
-	
-		()=1
-		(00004000)=y
-		(f=0
-(!(z7))(!f)
-f=1)
-			(4000+(x*y)+z7800+x*y))=0
-		(path[x+1])
+H(WXxYKWXyYKWXzY)JH(WXfY)JWXstartY:JA(WXxY=VX0YLWXxY<VX8YLWXxY=WXxY+VX1Y)J{C(E(VX0000Y+WXxY))J{E()=VX0YJ}DJ{E()=VX1YJBWXpathYJ}}WXpathY:JE(VX0c000Y)=VX0YJA(WXxY=VX0YLWXxY<VX8YLWXxY++)J{WXpath[WXxY]Y:JE(VX0000Y+WXxY)JBWXpathjumpYJ}WXpathjumpY:JC(E())J{BWXput[VX1Y]YJ}DJ{BWXput[VX0Y]YJ}A(WXyY=VX0YLWXyY<VX2YLWXyY=WXyY+VX1Y)J{WXput[WXyY]Y:JE(VX8000Y)JA(WXxY=VX8YKWXzY=VX0YLWXzY<VX8YLWXzY=WXzY+VX1YKWXxY=WXxYMVX1Y)J{WXdevelopY()J}}WXpath[VX8Y]Y:JA(WXxY=VX0YLWXxY<VX8YLWXxY++)J{C(E(WXxYKVX7Y))J{F(VX0ffffYKVX1YMWXxY)J}DJ{F(VX0000YKVX1YMWXxY)J}}A(WXxY=VX0YLWXxY<VX8YLWXxY=WXxY+VX1Y)J{C(E(VX0000Y+WXxY))J{F(VX0ffffYKVX1YM(WXxY+VX8Y))J}DJ{F(VX0000YKVX1YM(WXxY+VX8Y))J}}BWXstartYJ#WXdevelopY()J{C(E(VX4000YKVX4000Y))J{C(E(VX0000YKVX4000Y))J{E(VX0ffffYKWXxY*WXyY)J}}DJ{E()=VX1YJE(VX0000YKVX4000Y)=WXyYJA(WXfY=VX0YL(!(WXzYQVX7Y))S(!WXfY)LWXfY=VX1Y)J{E(VX4000Y+(WXxY*WXyY)+WXzYKVX7800Y+WXxY*WXyY))=VX0YJ}B(WXpath[WXxY+VX1Y]Y)J}}
