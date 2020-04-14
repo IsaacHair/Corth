@@ -55,6 +55,9 @@
 #define BS     (TSTART+24)
 #define ES     (TSTART+25)
 
+//line types, not tokens (tokens and types are the same if there is a token)
+#define CALL   (TSTART+26)
+
 //index to last element of buffer
 #define SLAST 17
 
@@ -537,6 +540,26 @@ void variable(char* s, char* t) {
   fclose(tfd);
 }
 
+void 
+
+void insertevaluate(FILE* sfd, FILE* tfd) {
+  int linetype;
+  
+  while (linetype = identline(sfd)) //does not actually move ahead a line
+    switch (linetype) {
+    case FOR:
+      initfor(sfd, tfd);
+      decompfor(sfd, tfd);
+      break;
+    case CALL:
+      putmacro(sfd, tfd);
+      break;
+    default:
+      putline(sfd, tfd);
+      break;
+    }
+}
+
 void freemacrosvariables() {
   int i;
 
@@ -549,7 +572,7 @@ void freemacrosvariables() {
   }
   free(ram);
 }
-    
+
 int main(int argc, char** argv) {
   if (argc != 4) {
     printf("usage: cvm <source> <target> <buffer>\n");
@@ -559,6 +582,8 @@ int main(int argc, char** argv) {
   char* s = argv[1];
   char* t = argv[2];
   char* b = argv[3];
+  FILE* tfd;
+  FILE* bfd;
 
   comment(s, t);
   flow(t, b);
@@ -569,8 +594,8 @@ int main(int argc, char** argv) {
   bracket(b, t);
   variable(t, b);
   macrobuffer(b, t);
-  /*insertevaluate(t, b);
-  translateinc(b, t);
+  insertevaluate(t, b);
+  /*translateinc(b, t);
   programpoint(t, b);*/
   freemacrosvariables();
   
