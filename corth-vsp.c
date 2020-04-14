@@ -55,8 +55,12 @@
 #define BS     (TSTART+24)
 #define ES     (TSTART+25)
 
-//line types, not tokens (tokens and types are the same if there is a token)
-#define CALL   (TSTART+26)
+//line types, not tokens
+#define DONE   0
+#define CALL   1
+#define SETVAR 2
+#define FORL   3
+#define COPY   4
 
 //index to last element of buffer
 #define SLAST 17
@@ -419,10 +423,6 @@ void bracket(char* s, char* t) {
   fclose(sfd);
 }
 
-int strprocess(char* str, FILE* stream) {
-  return 0;
-}
-
 int strgrab(char* str, FILE* stream) {
   int i;
   char c;
@@ -540,24 +540,82 @@ void variable(char* s, char* t) {
   fclose(tfd);
 }
 
-void 
+void useline(int linetype, FILE* sfd, FILE* tfd) {
+  switch (linetype) {
+  case CALL:
+    insertmacro(sfd, tfd);
+    break;
+  case SETVAR:
+    exprfile(sfd);
+    break;
+  case FORL:
+    setfor(sfd);
+    insertfor(sfd, tfd);
+    break;
+  case COPY:
+    writeline(sfd, tfd);
+    break;
+  }
+}
 
-void insertevaluate(FILE* sfd, FILE* tfd) {
-  int linetype;
+int identline(FILE* sfd) {
+  int i, j;
+  char c;
+  _Bool var;
+  _Bool notend;
+  char buff[17];
   
-  while (linetype = identline(sfd)) //does not actually move ahead a line
-    switch (linetype) {
-    case FOR:
-      initfor(sfd, tfd);
-      decompfor(sfd, tfd);
-      break;
-    case CALL:
-      putmacro(sfd, tfd);
-      break;
-    default:
-      putline(sfd, tfd);
+  for (i = 1, var = 1; (notend = fread(&c, 1, 1, sfd)) && c != END; i++) {
+    if (c == FOR) {
+      fseek(sfd, -i, SEEK_CUR);
+      return (FORL);
+    }
+    else if (c == ADR)
+      var = 0;
+    else if (c == ASN && var) {
+      fseek(sfd, -i, SEEK_CUR);
+      return (SETVAR);
+    }
+    else if (c == NAME) {
+      fseek(sfd, -1, SEEK_CUR);
+      if (strgrab(buff, sfd) == ES) {
+	for (fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j = 1;
+	     c != NAME; fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j++) ;
+	fseek(sfd, -i, SEEK_CUR);
+	if (checkmacro(buff))
+	  return (CALL);
+	else
+	  fseek(sfd, i+j, SEEK_CUR);
+      }
+      else {
+	for (fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j = 1;
+	     c != NAME; fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j++) ;
+	fseek(sfd, j, SEEK_CUR);
+      }
+      i += j;
+    }
+    else if (i > 1 && c == END) {
+      fseek(sfd, -i, SEEK_CUR);
+      return (COPY);
+    }
+    else if (i == 1 && c == END) {
       break;
     }
+  }
+  return (DONE);
+}
+
+void insertevaluate(char* s, char* t) {
+  FILE* sfd = fopen(s, "rb");
+  FILE* tfd = fopen(t, "wb");
+  int linetype;
+  
+  while ((linetype = identline(sfd)) != DONE)
+    //does not actually move ahead a line
+    useline(linetype, sfd, tfd);
+
+  fclose(sfd);
+  fclose(tfd);
 }
 
 void freemacrosvariables() {
