@@ -540,6 +540,53 @@ void variable(char* s, char* t) {
   fclose(tfd);
 }
 
+int checkmacro(char* str) {
+  int ret, i;
+
+  for (ret = 0; ret < mcount; ret++) {
+    for (i = 0; macro.label[i] != TERM; i++)
+      if (macro.label[i] != str[i])
+	break;
+    if (macro.label[i] == str[i] == TERM)
+      return (ret);
+  }
+  return (-1);
+}
+
+void insertmacro(sfd, tfd) {
+  char buff[17];
+  int i, j;
+  char c;
+  _Bool notend;
+  
+  strgrab(buff, sfd);
+  for (notend = fread(&c, 1, 1, sfd); c != END && notend;
+       notend = fread(&c, 1, 1, sfd)) ;
+  i = checkmacro(buff);
+  for (j = 0; macro[j].body[i] != TERM; j++)
+    fwrite(&macro[j].body[i], 1, 1, tfd);
+}
+
+void writeline(sfd, tfd) {
+  char c;
+  _Bool notend;
+
+  for (notend = fread(&c, 1, 1, sfd); c != END && notend;
+       notend = fread(&c, 1, 1, sfd))
+    fwrite(&c, 1, 1, tfd);
+  if (c == END)
+    fwrite(&c, 1, 1, tfd);
+}
+
+void setfor(sfd) {
+  char* buff;
+  int i;
+  char c;
+  _Bool notend;
+
+  for (notend = fread(&c, 1, 1, sfd); notend && c != FEND;
+       notend = fread(&c, 1, 1, sfd))
+  
 void useline(int linetype, FILE* sfd, FILE* tfd) {
   switch (linetype) {
   case CALL:
@@ -582,7 +629,7 @@ int identline(FILE* sfd) {
 	for (fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j = 1;
 	     c != NAME; fseek(sfd, -2, SEEK_CUR), fread(&c, 1, 1, sfd), j++) ;
 	fseek(sfd, -i, SEEK_CUR);
-	if (checkmacro(buff))
+	if (checkmacro(buff) != -1)
 	  return (CALL);
 	else
 	  fseek(sfd, i+j, SEEK_CUR);
@@ -618,6 +665,22 @@ void insertevaluate(char* s, char* t) {
   fclose(tfd);
 }
 
+int macrocalls(char* s) {
+  FILE* sfd = fopen(s, "rb");
+  char c;
+  int calls;
+  _Bool notend;
+
+  c = END;
+  do {
+    if (c == END)
+      if (identline(sfd) == CALL)
+	calls++;
+  } while (fread(&c, 1, 1, sfd));
+
+  fclose(sfd);
+}
+  
 void freemacrosvariables() {
   int i;
 
@@ -652,7 +715,8 @@ int main(int argc, char** argv) {
   bracket(b, t);
   variable(t, b);
   macrobuffer(b, t);
-  insertevaluate(t, b);
+  while (macrocalls(t))
+    insertevaluate(t, b);
   /*translateinc(b, t);
   programpoint(t, b);*/
   freemacrosvariables();
