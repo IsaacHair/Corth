@@ -251,5 +251,62 @@ as unsigned 8 byte numbers. During the last step of conversion to assembly,
 any numbers longer than two bytes are chopped off and only the last two bytes
 are used.
 
+For insertion and expression evaluation:
+ General outline:
+    - insertevaluate() buffers one line at a time (with malloc) and sends them
+    to useline(char* buff) to actually process the line. After buffering
+    the line, the cursor is left directly after the END token.
+    
+    In useline(char* buff):
+    - The line type is determined.
+    - A function is called to evaluate the line.
+    - If the line is a for loop, then it is sent to forinit(char* buff),
+    then sent to foruse(char* buff, FILE* sfd, FILE* tfd) until a value
+    of 0 is returned to indicate that the copying procedure is done. Note
+    that foruse() will fseek() back to the s t a r t of the line it was fed
+    once done evaluating the for loop. If the condition is false, it will
+    move the cursor directly a f t e r the } token marking the end of t h i s
+    for loop, then return 0. In the foruse() function, it will again buffer
+    each line and process it using useline(). Note that the foruse() function
+    creates buffb for each line it reads, preserving the buff that it
+    was passed as an argument. In forinit() and foruse(), expressions are
+    identified and passed to evalexpr(char* buffc); again, the original
+    buff that was passed and buffb are preserved.
+    - If the line is a macro call, the macro is simply transferred from ram to
+    buffd using malloc() as usual, and each line is fed to useline() until the
+    macro is done. The index of the macro in the macro[i] struct is passed
+    to macrouse(unsigned long int macro).
+    - If the line is neither a macro call or a for loop header, then the line
+    is passed to writeline(char* buff, FILE* tfd).
+    - In writeline(), the line is copied character by character. If a NAME or
+    NUM string is written, the function grabs whatever expression is there and
+    passes it to evalexpr() w i t h o u t writing the line in the target file.
+    Instead, it writes the return value of evalexpr() if the expression is
+    within a statement containing a token that actually compiles to machine
+    code, eg "if" or "adr", and not just a pre-processor thing. If the line
+    will end up being blank, nothing is written to the target file (eg the
+    line was just to re-assign a new value to a pre-processor variable).
+    - In evalexpr(), the expression is evaluated. First, the function scans for
+    any assignment or comparison operators, then places parenthesis around the
+    expressions on each side. Parenthesis are also placed around comparison
+    operators around assignment Then, the deepest
+    parenthesis level is identified,
+    and expressions at this level are buffered using malloc one by one, then
+    passed to microexpr(char* buffe) to be evaluated from left to right. This
+    function returns the value of the expression, and then evalexpr() inserts
+    this in place of the expression in parenthesis. Once the only operators
+    left are assignment operators, the evalexpr() function will evaluate
+    these from right to left and set the variables to what they should be.
+    Regardless of how many assignments took place (zero to infinity), the
+    expression on the rightmost side of all assignment operators is the return
+    value of evalexpr(). If the expression had no assignments, this would
+    simply be the value of the expression.
+    - microexpr() simply evaluates from left to right. The value of comparison
+    operators is either zero or one. The rest of the operators simply do what
+    their names suggest; ADD would just add two numbers.
+
+    - For all of the functions which grab a line and then set the cursor
+    at the start of the next line, grabline(FILE* sfd) is used.
+
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.

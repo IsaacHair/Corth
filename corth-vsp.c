@@ -55,13 +55,6 @@
 #define BS     (TSTART+24)
 #define ES     (TSTART+25)
 
-//line types, not tokens
-#define DONE   0
-#define CALL   1
-#define SETVAR 2
-#define FORL   3
-#define COPY   4
-
 //index to last element of buffer
 #define SLAST 17
 
@@ -539,6 +532,85 @@ void variable(char* s, char* t) {
   fclose(sfd);
   fclose(tfd);
 }
+
+void useline(char* linebuff, FILE* sfd, FILE* tfd) {
+  char* strbuff;
+  int i, j, k;
+  _Bool eql;
+
+  for (i = 0, strbuff = NULL; 1; i++)
+    if (linebuff[i] == FOR) {
+      forinit(linebuff);
+      while (foruse(linebuff, sfd, tfd)) ;
+      break;
+    }
+    else if (linebuff[i] == NAME) {
+      for (i += 2, j = 0; linebuff[i] != ES; i++, j++)
+	j++;
+      if (strbuff == NULL)
+	strbuff = malloc(j+1);
+      else
+	strbuff = realloc(strbuff, j+1);
+      for (i -= j, j = 0; linebuff[i] != ES; i++, j++)
+	strbuff[j] = linebuff[i];
+      strbuff[j] = TERM;
+      for (k = 0; k < mcount; k++) {
+	for (j = 0, eql = 1; macro[k].label[j] != '\0'; j++)
+	  if (macro[k].label[j] != strbuff[j])
+	    eql = 0;
+	if (macro[k].label[j] != strbuff[j])
+	  eql = 0;
+	if (eql)
+	  break;
+      }
+      if (eql) {
+	macrouse(k, tfd);
+	break;
+      }
+    }
+    else if (linebuff[i] == '\0') {
+      writeline(linebuff, tfd);
+      break;
+    }
+  if (strbuff != NULL)
+    free(strbuff);
+}
+      
+int grabline(char* buff, FILE* sfd) {
+  int i;
+  char c;
+  _Bool notend;
+
+  for (i = 0, notend = fread(&c, 1, 1, tfd); notend && c != END;
+       notend = fread(&c, 1, 1, tfd))
+    i++;
+  if (buff == NULL)
+    buff = malloc(i+1);
+  else
+    buff = realloc(buff, i+1);
+  if (!notend)
+    return 0;
+  fseek(sfd, -(i+1), SEEK_CUR);
+  for (i = 0, fread(&c, 1, 1, tfd); c != END; i++, fread(&c, 1, 1, tfd))
+    buff[i] = c;
+  buff[i] = '\0';
+  return 1;
+}
+
+void insertevaluate(char* s, char* t) {
+  FILE* sfd = fopen(s, "rb");
+  FILE* tfd = fopen(t, "wb");
+  char* buff;
+
+  buff = NULL;
+  while (grabline(buff, sfd))
+    useline(buff, sfd, tfd);
+
+  if (buff != NULL)
+    free(buff);
+  fclose(sfd);
+  fclose(tfd);
+}
   
 void freemacrosvariables() {
   int i;
@@ -574,8 +646,8 @@ int main(int argc, char** argv) {
   bracket(b, t);
   variable(t, b);
   macrobuffer(b, t);
-  /*insertevaluate(t, b);
-  translateinc(b, t);
+  insertevaluate(t, b);
+  /*translateinc(b, t);
   programpoint(t, b);*/
   freemacrosvariables();
   
