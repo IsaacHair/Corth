@@ -578,14 +578,78 @@ void writeline(sfd, tfd) {
     fwrite(&c, 1, 1, tfd);
 }
 
+unsigned long int expr(char* input) {
+  
+
 void setfor(sfd) {
   char* buff;
   int i;
   char c;
-  _Bool notend;
+  _Bool notend, scan, record;
 
-  for (notend = fread(&c, 1, 1, sfd); notend && c != FEND;
-       notend = fread(&c, 1, 1, sfd))
+  for (buff = NULL, notend = fread(&c, 1, 1, sfd), record = scan = 0; notend;
+       notend = fread(&c, 1, 1, sfd)) {
+    if (c == NAME || c == NUM) {
+      if (!scan && !record)
+	scan = 1;
+      else if (scan && !record) {
+	scan = 0;
+	record = 1;
+      }
+      i = 0;
+    }
+    if (c != SEP && c != FEND) {
+      if (record) {
+	buff[i] = c;
+	i++;
+      }
+      else if (scan)
+	i++;
+    }
+    else if (c == SEP) {
+      if (record) {
+	buff[i] = TERM;
+	expr(buff);
+	record = scan = 0;
+      }
+      else if (scan) {
+	if (buff == NULL)
+	  buff = malloc(i+1);
+	else {
+	  free(buff);
+	  buff = malloc(i+1);
+	}
+	fseek(sfd, -(i+1), SEEK_CUR);
+      }
+    }
+    else if (c == FEND) {
+      if (record) {
+	buff[i] = TERM;
+	expr(buff);
+        break;
+      }
+      else if (scan) {
+	if (buff == NULL)
+	  buff = malloc(i+1);
+	else {
+	  free(buff);
+	  buff = malloc(i+1);
+	}
+	fseek(sfd, -(i+1), SEEK_CUR);
+      }
+    }
+  }
+}
+
+void insertfor(FILE* sfd, FILE* tfd) {
+  char* buff;
+
+}
+
+void exprfile(FILE* sfd) {
+  char* buff;
+
+}
   
 void useline(int linetype, FILE* sfd, FILE* tfd) {
   switch (linetype) {
@@ -715,8 +779,11 @@ int main(int argc, char** argv) {
   bracket(b, t);
   variable(t, b);
   macrobuffer(b, t);
-  while (macrocalls(t))
+  while (macrocalls(t)) {
     insertevaluate(t, b);
+    insertevaluate(b, t);
+  }
+  insertevaluate(t, b);
   /*translateinc(b, t);
   programpoint(t, b);*/
   freemacrosvariables();
