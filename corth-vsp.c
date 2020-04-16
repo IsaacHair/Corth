@@ -117,7 +117,7 @@ void flow(char* s, char* t) {
   FILE * sfd = fopen(s, "r");
   FILE * tfd = fopen(t, "wb");
   char c;
-  int new;
+  _Bool new;
   
   for (c = fgetc(sfd), new = 1; c != EOF; c = fgetc(sfd))
     if (c == '\n' || c == 10 || c == 13) {
@@ -292,7 +292,7 @@ int groupdata(char* s, char* t) {
   FILE * tfd = fopen(t, "wb");
   char c;
   char buff[3];
-  int notend, close;
+  _Bool notend, close;
 
   fread(&c, 1, 1, sfd);
   while(1)
@@ -364,9 +364,7 @@ int groupdata(char* s, char* t) {
 void bracket(char* s, char* t) {
   FILE * sfd = fopen(s, "rb");
   FILE * tfd = fopen(t, "wb");
-  int ctab;
-  int ptab;
-  int i;
+  long ctab, ptab, i;
   _Bool place;
   char c;
   char buff;
@@ -417,7 +415,7 @@ void bracket(char* s, char* t) {
 }
 
 int strgrab(char* str, FILE* stream) {
-  int i;
+  long i;
   char c;
   _Bool notend;
   
@@ -449,7 +447,7 @@ void macrobuffer(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
   char c;
-  int i, j, depth;
+  long i, j, depth;
   _Bool notend;
 
   for (macro = NULL, mcount = 0; fread(&c, 1, 1, sfd);)
@@ -500,7 +498,7 @@ void variable(char* s, char* t) {
   char buff[17];
   unsigned long int val;
   unsigned long int total;
-  int i;
+  long i;
   int cont;
 
   for (ram = NULL, rcount = 0; fread(&c, 1, 1, sfd);)
@@ -533,20 +531,230 @@ void variable(char* s, char* t) {
   fclose(tfd);
 }
 
+long evalexpr(char* buff) {
+  printf("evalexpr\n>>> %s <<<", buff);
+  return 0;
+}
+
+int macrograbline(long mac, char** buff, long* pos) {
+  long i;
+  char c;
+  printf("macrograbline\n");
+  for (i = 0, c = macro[mac].body[*pos+i]; c != TERM && c != END; ++i,
+       c = macro[mac].body[*pos+i]) ;
+  if ((*buff) == NULL)
+    *buff = malloc(i+1);
+  else
+    *buff = realloc((*buff), i+1);
+  if (i == 0)
+    return 0;
+  for (i = 0, c = macro[mac].body[*pos]; c != TERM && c != END; ++(*pos), ++i,
+       c = macro[mac].body[*pos])
+    (*buff)[i] = c;
+  (*buff)[i] = '\0';
+  return 1;
+}
+
+void macrouse(long mac, FILE* sfd, FILE* tfd) {
+  char* buff;
+  long pos;
+  void useline();
+  printf("macrouse\n");
+  for (pos = 0, buff = NULL; macrograbline(mac, &buff, &pos);)
+    useline(buff, sfd, tfd);
+
+  free(buff);
+}
+
+void forinit(char* buff) {
+  long i, j;
+  char* tinybuff;
+  printf("forinit\n");
+  for (i = 0; buff[i] != FEND && buff[i] != NAME && buff[i] != NUM &&
+	 buff[i] != TERM; i++)
+    ;
+  for (j = 0; buff[i] != FEND && buff[i] != TERM; i++, j++)
+    ;
+  tinybuff = NULL;
+  printf("\ti = %d; j = %d\n", i, j);
+  tinybuff = malloc(j+1);
+  for (i -= j, j = 0; buff[i] != FEND && buff[i] != TERM; i++, j++)
+    tinybuff[j] = buff[i];
+  tinybuff[j] = TERM;
+  evalexpr(tinybuff);
+
+  free(tinybuff);
+}
+
+int forgrabline(char* buff, long* depth, FILE* sfd) {
+  char c;
+  long i;
+  char* tinybuff;
+  int grabline();
+  printf("forgrabline\n");
+  for (i = 1; fread(&c, 1, 1, sfd); i++)
+    if (c != '}' && c != '{')
+      break;
+    else if (c == '}')
+      (*depth)--;
+    else
+      (*depth)++;
+  fseek(sfd, -i, SEEK_CUR);
+  if (depth)
+    if (grabline(tinybuff, sfd)) {
+      free(tinybuff);
+      return 1;
+    }
+  free(tinybuff);
+  return 0;
+}
+
+int foruse(char* buff, FILE* sfd, FILE* tfd) {
+  char* tinybuff;
+  long i, j, depth;
+  void useline();
+  printf("foruse\n");
+  for (i = 0; buff[i] != FEND && buff[i] != TERM; i++)
+    ;
+  for (i++; buff[i] != FEND && buff[i] != TERM && buff[i] != NUM &&
+	 buff[i] != NAME; i++)
+    ;
+  for (j = 0; buff[i] != FEND && buff[i] != TERM; j++, i++)
+    ;
+  tinybuff = malloc(j+1);
+  for (i -= j, j = 0; buff[i] != FEND && buff[i] != TERM; j++, i++)
+    tinybuff[j] = buff[i];
+  tinybuff[j] = TERM;
+  if (!evalexpr(tinybuff)) {
+    free(tinybuff);
+    return 0;
+  }
+  depth = 0;
+  while (forgrabline(tinybuff, &depth, sfd))
+    useline(tinybuff, sfd, tfd);
+  for (i++, j = 0; buff[i] != END && buff[i] != TERM; i++, j++)
+    ;
+  tinybuff = realloc(tinybuff, j+1);
+  for (i -= j, j = 0; buff[i] != END && buff[i] != TERM; i++, j++)
+    tinybuff[j] = buff[i];
+  tinybuff[j] = TERM;
+  evalexpr(tinybuff);
+  free(tinybuff);
+  return 1;
+}
+
+void putval(long val, FILE* tfd) {
+  long compare;
+  char c;
+  printf("putval\n");
+  for (compare = 1; compare <= (val/16); compare *= 16)
+    ;
+  for (; compare >= 1; val = val-(val/compare)*compare, compare /= 16)
+    if (val/compare <= 9) {
+      c = val/compare+'0';
+      fwrite(&c, 1, 1, tfd);
+    }
+    else {
+      c = val/compare+'a'-10;
+      fwrite(&c, 1, 1, tfd);
+    }
+}
+
+int isvalue(char* buff) {
+  long i, j, k;
+  _Bool eql;
+  char* tinybuff;
+  
+  for (i = 0, tinybuff = NULL; buff[i] != TERM; i++)
+    if (buff[i] == NUM) {
+      free(tinybuff);
+      return 1;
+    }
+    else if (buff[i] == NAME) {
+      for (i += 2, j = 0; buff[i] != ES; i++, j++)
+	;
+      if (tinybuff == NULL)
+	tinybuff = malloc(j+1);
+      else
+	tinybuff = realloc(tinybuff, j+1);
+      for (i -= j, j = 0; buff[i] != ES; i++, j++)
+	tinybuff[j] = buff[i];
+      tinybuff[j] = TERM;
+      for (k = 0; k < rcount; k++) {
+	for (j = 0, eql = 0; tinybuff[j] != TERM; j++)
+	  if (tinybuff[j] != ram[k].label[j])
+	    eql = 0;
+	if (tinybuff[j] != ram[k].label[j])
+	  eql = 0;
+	if (eql) {
+	  free(tinybuff);
+	  return 1;
+	}
+      }
+    }
+  return 0;
+}
+
+void writeline(char* buff, FILE* tfd) {
+  char c;
+  long i, j;
+  char* tinybuff;
+  _Bool display;
+  printf("writeline\n");
+  for (i = 0, display = 0; buff[i] != TERM; i++)
+    switch (buff[i]) {
+    case ADR:
+    case OUT:
+    case IN:
+    case LABEL:
+      display = 1;
+      break;
+    }
+  for (i = 0, tinybuff = NULL; buff[i] != TERM;) {
+    for (; buff[i] != NAME && buff[i] != NUM && buff[i] != TERM; i++) {
+      c = buff[i];
+      fwrite(&c, 1, 1, tfd);
+    }
+    if (buff[i] == NAME || buff[i] == NUM) {
+      for (j = 0; buff[i] != SBE && buff[i] != SEP && buff[i] != TERM &&
+	     buff[i] != END; i++, j++)
+	;
+      tinybuff = malloc(j+1);
+      for (i -= j, j = 0; buff[i] != SBE && buff[i] != SEP && buff[i] != TERM &&
+	     buff[i] != END; i++, j++) {
+	tinybuff[j] = buff[i];
+      }
+      tinybuff[j] = TERM;
+      if (display && isvalue(tinybuff))
+	putval(evalexpr(tinybuff), tfd);
+      else if (display && !isvalue(tinybuff))
+	for (j = 0; tinybuff[j] != TERM; j++)
+	  fwrite(&(tinybuff[j]), 1, 1, tfd);
+    }
+  }
+  c = '\n';///////////////////
+  fwrite(&c, 1, 1, tfd);///////////////////
+  free(tinybuff);
+}
+
 void useline(char* linebuff, FILE* sfd, FILE* tfd) {
   char* strbuff;
-  int i, j, k;
+  long i, j, k;
   _Bool eql;
-
-  for (i = 0, strbuff = NULL; 1; i++)
+  printf("useline\n");
+  for (i = 0, strbuff = NULL; 1; i++) {
+    printf("useline.loop %s\n", linebuff);
     if (linebuff[i] == FOR) {
+      printf("useline.loop.FOR\n");
       forinit(linebuff);
       while (foruse(linebuff, sfd, tfd)) ;
       break;
     }
     else if (linebuff[i] == NAME) {
+      printf("useline.loop.NAME\n");
       for (i += 2, j = 0; linebuff[i] != ES; i++, j++)
-	j++;
+	;
+      printf("\tj = %d\n", j);
       if (strbuff == NULL)
 	strbuff = malloc(j+1);
       else
@@ -564,36 +772,38 @@ void useline(char* linebuff, FILE* sfd, FILE* tfd) {
 	  break;
       }
       if (eql) {
-	macrouse(k, tfd);
+	macrouse(k, sfd, tfd);
 	break;
       }
     }
-    else if (linebuff[i] == '\0') {
+    else if (linebuff[i] == TERM) {
       writeline(linebuff, tfd);
       break;
     }
-  if (strbuff != NULL)
-    free(strbuff);
+  }
+  free(strbuff);
 }
       
-int grabline(char* buff, FILE* sfd) {
-  int i;
+int grabline(char** buff, FILE* sfd) {
+  long i;
   char c;
   _Bool notend;
-
-  for (i = 0, notend = fread(&c, 1, 1, tfd); notend && c != END;
-       notend = fread(&c, 1, 1, tfd))
+  printf("grabline\n");
+  for (i = 0, notend = fread(&c, 1, 1, sfd); notend && c != END;
+       notend = fread(&c, 1, 1, sfd))
     i++;
-  if (buff == NULL)
-    buff = malloc(i+1);
+  if ((*buff) == NULL)
+    (*buff) = malloc(i+1);
   else
-    buff = realloc(buff, i+1);
-  if (!notend)
+    (*buff) = realloc((*buff), i+1);
+  if (!notend && i == 0)
     return 0;
   fseek(sfd, -(i+1), SEEK_CUR);
-  for (i = 0, fread(&c, 1, 1, tfd); c != END; i++, fread(&c, 1, 1, tfd))
-    buff[i] = c;
-  buff[i] = '\0';
+  for (i = 0, fread(&c, 1, 1, sfd); c != END; i++, fread(&c, 1, 1, sfd))
+    (*buff)[i] = c;
+  (*buff)[i] = END;
+  (*buff)[i] = TERM;
+  printf("%s\n", *buff);
   return 1;
 }
 
@@ -601,19 +811,20 @@ void insertevaluate(char* s, char* t) {
   FILE* sfd = fopen(s, "rb");
   FILE* tfd = fopen(t, "wb");
   char* buff;
-
+  printf("insertevaluate\n");
   buff = NULL;
-  while (grabline(buff, sfd))
+  while (grabline(&buff, sfd)) {
+    printf("%s\n", buff);
     useline(buff, sfd, tfd);
+  }
 
-  if (buff != NULL)
-    free(buff);
+  free(buff);
   fclose(sfd);
   fclose(tfd);
 }
   
 void freemacrosvariables() {
-  int i;
+  long i;
 
   for (i = 0; i < mcount; i++)
     free(macro[i].body);
@@ -634,8 +845,6 @@ int main(int argc, char** argv) {
   char* s = argv[1];
   char* t = argv[2];
   char* b = argv[3];
-  FILE* tfd;
-  FILE* bfd;
 
   comment(s, t);
   flow(t, b);

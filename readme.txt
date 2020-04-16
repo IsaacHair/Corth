@@ -289,8 +289,8 @@ For insertion and expression evaluation:
     - In evalexpr(), the expression is evaluated. First, the function scans for
     any assignment or comparison operators, then places parenthesis around the
     expressions on each side. Parenthesis are also placed around comparison
-    operators around assignment Then, the deepest
-    parenthesis level is identified,
+    operators around assignment. Note that commas can be placed between
+    statements. Then, the deepest parenthesis level is identified,
     and expressions at this level are buffered using malloc one by one, then
     passed to microexpr(char* buffe) to be evaluated from left to right. This
     function returns the value of the expression, and then evalexpr() inserts
