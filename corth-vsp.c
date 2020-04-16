@@ -543,15 +543,16 @@ int macrograbline(long mac, char** buff, long* pos) {
   for (i = 0, c = macro[mac].body[*pos+i]; c != TERM && c != END; ++i,
        c = macro[mac].body[*pos+i]) ;
   if ((*buff) == NULL)
-    *buff = malloc(i+1);
+    *buff = malloc(i+2);
   else
-    *buff = realloc((*buff), i+1);
+    *buff = realloc((*buff), i+2);
   if (i == 0)
     return 0;
   for (i = 0, c = macro[mac].body[*pos]; c != TERM && c != END; ++(*pos), ++i,
        c = macro[mac].body[*pos])
     (*buff)[i] = c;
-  (*buff)[i] = '\0';
+  (*buff)[i] = END;
+  (*buff)[i+1] = TERM;
   return 1;
 }
 
@@ -793,16 +794,16 @@ int grabline(char** buff, FILE* sfd) {
        notend = fread(&c, 1, 1, sfd))
     i++;
   if ((*buff) == NULL)
-    (*buff) = malloc(i+1);
+    (*buff) = malloc(i+2);
   else
-    (*buff) = realloc((*buff), i+1);
+    (*buff) = realloc((*buff), i+2);
   if (!notend && i == 0)
     return 0;
   fseek(sfd, -(i+1), SEEK_CUR);
   for (i = 0, fread(&c, 1, 1, sfd); c != END; i++, fread(&c, 1, 1, sfd))
     (*buff)[i] = c;
   (*buff)[i] = END;
-  (*buff)[i] = TERM;
+  (*buff)[i+1] = TERM;
   printf("%s\n", *buff);
   return 1;
 }
