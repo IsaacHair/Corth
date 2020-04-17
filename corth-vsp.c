@@ -574,9 +574,8 @@ void forinit(char* buff) {
   printf("forinit\n");
   for (valid = 1, i = 0, tinybuff = NULL; valid; i++) {
     for (; buff[i] != SEP && buff[i] != NAME && buff[i] != NUM &&
-	   buff[i] != TERM && buff[i] != FEND; i++)
-      if (buff[i] == PS)
-	break;
+	   buff[i] != TERM && buff[i] != FEND && buff[i] != NOT; i++)
+      ;
     for (j = 0; buff[i] != FEND && buff[i] != TERM && buff[i] != SEP; i++, j++)
       ;
     printf("\ti = %d; j = %d\n", i, j);
@@ -631,11 +630,11 @@ int foruse(char* buff, FILE* sfd, FILE* tfd) {
   for (i = 0; buff[i] != FEND && buff[i] != TERM; i++)
     ;
   for (i++; buff[i] != FEND && buff[i] != TERM && buff[i] != NUM &&
-	 buff[i] != NAME && buff[i] != PS; i++)
+	 buff[i] != NAME && buff[i] != NOT; i++)
     ;
   for (j = 0; buff[i] != FEND && buff[i] != TERM; j++, i++)
     ;
-  tinybuff = malloc((sizeof(char)*(j+1));
+  tinybuff = malloc(sizeof(char)*(j+1));
   for (i -= j, j = 0; buff[i] != FEND && buff[i] != TERM; j++, i++)
     tinybuff[j] = buff[i];
   tinybuff[j] = TERM;
@@ -701,7 +700,7 @@ int isvalue(char* buff) {
       for (i += 2, j = 0; buff[i] != ES; i++, j++)
 	;
       if (tinybuff == NULL)
-	tinybuff = malloc((sizeof(char)*(j+1));
+	tinybuff = malloc(sizeof(char)*(j+1));
       else
 	tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
       for (i -= j, j = 0; buff[i] != ES; i++, j++)
@@ -738,14 +737,12 @@ void writeline(char* buff, FILE* tfd) {
       break;
     }
   for (i = 0, tinybuff = NULL; buff[i] != TERM;) {
-    for (; buff[i] != NAME && buff[i] != NUM && buff[i] != TERM; i++) {
+    for (; buff[i] != NAME && buff[i] != NUM && buff[i] != TERM &&
+	   buff[i] != NOT; i++) {
       c = buff[i];
       fwrite(&c, 1, 1, tfd);
     }
-    if (buff[i] == NAME || buff[i] == NUM || (buff[i] == PS &&
-					      buff[i-1] != GOTO &&
-					      buff[i-1] != IF &&
-					      buff[i-1] != ELSE)) {
+    if (buff[i] == NAME || buff[i] == NUM || buff[i] == NOT) {
       for (j = 0; buff[i] != SBE && buff[i] != SEP && buff[i] != TERM &&
 	     buff[i] != END; i++, j++)
 	;

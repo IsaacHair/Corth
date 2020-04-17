@@ -305,8 +305,301 @@ For insertion and expression evaluation:
     operators is either zero or one. The rest of the operators simply do what
     their names suggest; ADD would just add two numbers.
 
+So basically it makes more sense to just grab expressions where a string or
+operator starts. The missing start parenthesis can be inferred based on the
+parenthesis within the expression. So, all expressions start with a NAME,
+NUM, or the NOT operator (as this is the only operator that does not take two
+inputs) and end with SEP, FEND, END, or TERM. The mismatched
+parenthesis left in the program are simply discarded, and the mismatched
+parenthesis within expressions still provide enough information, as explained
+above. Also, now, statements separated by SEP in for loops are sent one at
+a time to evalexpr(). Note that this is the only place where comma (SEP)
+separation is grammatically correct.
+
     - For all of the functions which grab a line and then set the cursor
     at the start of the next line, grabline(FILE* sfd) is used.
 
 NOTE: THE CODE FOR UPLOADING AND COMPILING VSP ASSEMBLY NEEDS TO BE
 CHANGED TO USE BINARY FILES INSTEAD OF TEXT FOR RELIABILITY.
+
+This whole thing is a bit of a mess. It might be a good idea to get a solid
+outline for what is expected first and break this into manageable chunks.
+The expression identification currently sucks and dealing with mismatched
+parenthesis and having to re-write the identification process over and over
+again for each function and mixing ram and files to buffer data is hard
+to deal with.
+
+
+
+
+Version 3:
+
+- Changing file extension to .cv
+- Syntax is updated, grammar is more explicit, everything is slightly
+  more limited so that a working version of this compiler can be created.
+- More complex versions will come later.
+
+- syntax:
+
+keywords
+
+for
+:
+goto
+if
+else
+adr
+out
+in
+<-
+int
+,
+;
+'\t'
+'\n'
+#
+[
+]
+
+- for expr0, expr1, expr2 ... exprx; conditionexpr; expr0, expr1 ... exprx
+- label:
+- goto label
+- if adr optional, optional <- optional
+- if in optional
+- else
+- else if adr optional, optional <- optional
+- else if in optional
+- adr optional, optional <- optional
+- out optional, optional
+- int var0, var1[] ... varx
+- #macro
+
+- expressions:
+
+pre-evaluation
+      <variable name>
+      [
+      ]
+      <number written in hex, 1 - 16 digits>
+      (
+      )
+
+first priority
+      /
+      %
+      *
+      +
+      -
+      &
+      |
+      ^
+      !
+      
+secod priority
+      <
+      >
+      <=
+      >=
+      ==
+      !=
+      &&
+      ^^
+      ||
+
+third priority
+      =
+
+- Expressions are expected directly after any statements where they should
+  appear. This is the only location where expressions should appear.
+  An expression somewhere else results in a syntax error. This includes
+  assignments. Expressions are passed to expr(char** buff), which converts
+  the buffer to the desired final value.
+- expr(): First, the expression is isolated and inserted
+  into a buffer string in ram. Then, the deepest level of [] is identified,
+  then the deepest level of () within that. The string of data here is
+  buffered and sent to microexpr() to be evaluated and have its value pasted
+  back into the big buffer in place of the string. Then the next string at
+  that level is grabbed and used; if there are no strings at this level, then
+  back up a level with (); if () is already at level 0, back up a level at []
+  and look for the deepest (). Repeat this process untill [] and () are both
+  at level zero and the value returned from microexpr() has been pasted. At
+  this point, the buffer contains the desired value, so the function is done.
+  Note that this means that a pointer to the buffer is passed, so it will be
+  a char**, and everything is done in hex lower case as usual.
+- microexpr(): Identify first priority operands and buffer the values on
+  either side, then evaluate those values with that operand, then insert
+  the value in place of what used to be there. If '!' is identified, then
+  only the value to its immediate right is used. When handling values, the
+  value is first checked to see if it is a member of the variable name list.
+  If so, the value of the variable is inserted. If [] directly followed the
+  name, then the hex string inside is converted to a uint64_t and then indexed
+  to the corresponding value of the array to retrieve the value. Do this
+  will all first priority operands, simply moving from left to right.
+  Once all first priority operands are gone, switch to second priority with
+  the same general scheme, going left to right
+  Once those are all gone, switch to third priority. These operands go from
+  right to left, so simply evaluate backwards. The assignment operator does
+  two things: Obviously, it assigns the value of the right hand side to the
+  left hand side. Second, though, it collapses to become the value on the right
+  side.
+  Once no operands remain, one last pass occurs to conver everything to numbers.
+  Then, the function ends because its buffer is now the final hex string value.
+
+
+Actual compiling workflow:
+- Scan through the file and identify key words. Buffer the file into global
+  variable: (use malloc/free)
+
+  struct l {
+  	 int type;
+	 long depth;
+	 char** arg;
+  } *line;
+
+  Yes, there are 3 levels of pointers here, but there is good reason. The
+  pointer on line allows each line to be buffered. The double pointer
+  on arg allows arg to point to a list of strings, each string being an
+  argument. FOR is the only dynamic size operator, so after each section,
+  ';' is placed as an operator to indicate the end of that section, then
+  you move on to the next operator. Each string is terminated with '\0' as
+  is normal behavior. The depth is the number of tabs at the beginning of the
+  line in the source file. Lines in the source file are terminated with a
+  carriage return or a newline character or ';', whichever comes first,
+  and the next line only starts with a character other than those.
+  Note that "int x;\t\nblah...." would result in a line containing '\t' only.
+  Blank lines with no discernable type are discarded and not buffered into
+  line. Note that a terminating line just containing TERM is placed at the end.
+  During this process, int and # are also not converted to lines; instead, they
+  are buffered immediately into: (use malloc/free)
+
+  struct r {
+  	 uint64_t* value;
+	 char* label;
+  } *ram;
+
+  and
+
+  struct m {
+  	 char* label;
+	 struct l *line;
+  } *macro;
+
+  Essentially, macro defines a collection of mini-programs with a label and
+  a set of lines like the larger program. The reasoning behind the long* in
+  ram is so that arrays can be declared. When variables are declared, they are
+  of the type:
+
+  int myvariable0
+
+  or
+
+  int myvariable0[100]
+
+  Variables can be labeled as any combonation of lower case letters and numbers.
+  However, it is smart to include a letter besides a-f because, when expressions
+  are evaluated, the variable called "800" will replace the number "800" and you
+  are kinda screwed. Also note that arrays can be declared, but they are only
+  1 dimensional. You can use 2 or more dimensional arrays, it is just up to
+  the programmer to multiply out the index values and then place them within
+  the 1 dimensional array. Note that only one pair of [] can follow a variable
+  name, and nothing can come after this. However, there is no limit to variable
+  name length, but as far as numbers go, everything is converted to uint64_t.
+  Also, all numbers are always written in lower case hex. For example, the
+  declaration above for "myvariable0[100]" declares two hundred and fifty six
+  uint64_t's, not one hundred, because 100 is in hex.
+
+  Types are as follows: (#s in decimal, not hex)
+
+TERM	0      //the program is done
+LABEL	1
+GOTO	2
+INS	3	//insert macro
+II0	4	//if in, 0 arguments
+II1	5	//if in, mask
+IA0	6	//if address, 0 arguments
+IA1	7	//if address, value to set address to only
+IA2	8	//if address, value to set address to and mask
+IA0A	9	//previous def + assignment
+IA1A	10	//previous def + assignment
+IA2A	11	//previous def + assignment
+E	12	//else
+EII0	13	//else + previous def (this is the same for the rest)
+EII1	14
+EIA0	15
+EIA1	16
+EIA2	17
+EIA0A	18
+EIA1A	19
+EIA2A	20
+A1	21
+A2	22
+A0A	23
+A1A	24
+A2A	25
+O1	26
+O2	27
+LABELA	28	//label with an array
+GOTOA	29	//goto with an array
+INSA	30	//insert with an array
+FOR	31
+
+  Note that A0 is ommitted; doing nothing with the address is not an
+  instruction. The only time "adr" with no arguments is typed is in
+  conjuction with an if statement or if else statement. Similar logic for
+  ommitting plain input and O0. However, A0A is kept because they
+  are doing something: assignment.
+
+  Also, with labels, there can also be one dimensional arrays. Again, these
+  can be adapted for 2+ dimensions. This extends to macros, too.
+
+  Every argument boils down to a numeric expression except for:
+  - terminating ';'s within FOR
+  - the name of a label within GOTO/GOTOA
+  - the name of a label within LABEL/LABELA
+  - the name of a label within INS/INSA
+  The first situation, with FOR, doesn't require fancy handling because
+  the ';' is just an indicator. For the last three, though, each one contains
+  a text/number string which is preserved in the zeroth argument slot, and
+  if the optional array is used, then the first argument slot contains the
+  index of this array which is an expression.
+
+
+  Anyways, once everything is buffered, the second pass involves copying the
+  *line to *line2 which is of the same type and uses the malloc/free process
+  as well. During copying, everything is preserved, except for the fact that
+  expressions are evaluated as they are copied. FOR lines are not copied;
+  instead, they repeatedly copy the body of the FOR and evaluate the FOR
+  argument expressions along the way (and condition), which is everything after
+  the FOR line that has a higher depth than the FOR until something with the
+  same depth or lower is encountered. INS lines are also not copied; instead,
+  the body of the macro is copied following the above procedure (essentially,
+  just switch from reading line to macro[mac].line). This procedure
+  terminates with the copying of the empty line with just TERM as type. If
+  this was acting on a macro, copying returns outside the macro procedure.
+  Otherwise, if this was for the whole program, copying is now done. Note that
+  during macro copying there is a correction factor for the tab depth
+  that accumulates as more macros are called within one another.
+
+
+Better storage method:
+
+  struct l {
+  	 int type;
+	 char** arg;
+	 struct l* content;
+  }* lines;
+
+Follow the procedure above, but instead of needing tab depth for the lines,
+increasing tab depth indicates creating a new content structure. This can be
+passed as an argument recursively, allowing nesting. If tab depth decreases,
+just add a term character and then return to the parent function, which contains
+the pointer to the outside structure. This allows for loops as well as
+if and else to be contained in a very smooth way. When reading, these types
+indicate an increase in depth; otherwise, depth is not increased. A TERM
+instruction indicates a decrease in depth or the end if the function evaluating
+this is the parent function. Still store macros and variables seperately,
+because this is still more natural.
+
+During for loop insertion, the members of the inside "content" struct are
+passed without increasing depth on the struct being written to. However,
+depth for if and else is still increased.
