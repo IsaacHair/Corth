@@ -469,6 +469,7 @@ Actual compiling workflow:
   Note that "int x;\t\nblah...." would result in a line containing '\t' only.
   Blank lines with no discernable type are discarded and not buffered into
   line. Note that a terminating line just containing TERM is placed at the end.
+  Comments are also identified and skipped during this stage.
   During this process, int and # are also not converted to lines; instead, they
   are buffered immediately into: (use malloc/free)
 
@@ -587,7 +588,7 @@ Better storage method:
   	 int type;
 	 char** arg;
 	 struct l* content;
-  }* lines;
+  }* line;
 
 Follow the procedure above, but instead of needing tab depth for the lines,
 increasing tab depth indicates creating a new content structure. This can be
@@ -603,3 +604,48 @@ because this is still more natural.
 During for loop insertion, the members of the inside "content" struct are
 passed without increasing depth on the struct being written to. However,
 depth for if and else is still increased.
+
+IMPORTANT COMMENTS: First of all, remove the idea of terminating lines with ';'
+as this is difficult and there is already enough operator overloading going
+on. Second, this is the workflow:
+
+insertline(struct l* point, int* i, FILE* sfd) is called from main()
+with i as zero and "line" as the pointer for the line structure. This function
+calls grabline(char** buff, FILE* sfd), which buffers the next line.
+linetype(char* buff, _Bool* comment), which returns type and also allows for
+continued comment recognition across all lines, is called next. Comments result
+in no nesting at all, so comment does not need to be passed to insertline().
+Anyways, insertline() then writes the line. If a depth increase is needed,
+insertline() will call itself with pointer "point.content" and the process
+will repeat. malloc() is called each time a line is added, and, at the end,
+free() will need to be called to actually read the whole thing and free the
+structure. If a depth decrease is needed, then a TERM line is added, then
+that instance of insertline() ends. If the depth is remaining the same or the
+line is a TERM line, then the pointer it contains is set to NULL. If the source
+file ends, this also indicates a depth decrease, which results in the original
+insertline() returning to main(). If the depth remains the same, insertline()
+will call itself, with i incrementedWRONG! NOTE:this uses curried functions wait
+maybe not ok this structure is gonna be weird.
+
+sooooo......
+
+insertline() is called. It repeatedly grabs lines and, well, inserts them
+into the line structure. Pointers here are also marked as null if they are
+unused. If there is a depth increase, it calls a new instance of itself with
+the more nested pointer. Important: it remains in the loop of grabbing lines,
+so when the function handling the indented lines returns, the function that
+called it can resume reading lines. It only returns if the line depth decreses.
+If there is a macro definition, it will simply handle the
+macro and then goes back to insertline() with a pointer to macro[x].line
+instead of line.
+
+Anyways you have:
+
+void insertline(struct l* point, _Bool* comment, FILE* sfd)
+void grabline(buff**, FILE* sfd)
+int typeline(buff*)
+
+
+Now, malloc'ed memory is not going to be freed at the end of the program
+because this will already occur automatically. Files will still be closed,
+though.
