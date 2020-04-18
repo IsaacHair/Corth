@@ -649,3 +649,6 @@ int typeline(buff*)
 Now, malloc'ed memory is not going to be freed at the end of the program
 because this will already occur automatically. Files will still be closed,
 though.
+
+The actual program also has error and line counters, etc. See the actual
+program for the details; this readme is just an outline.
