@@ -657,3 +657,18 @@ the comment is terminated. There are other minor updates too, like the ->
 operator.
 
 Important: invisible tabs are NOT deleted
+
+ok wait...
+
+first of all, remember that the definitions are completely changed.
+
+and back to what i was saying...
+
+The program will return an error if there are invisible tabs or if the start
+of a comment isn't at the beginning of a line and the end isn't at the end
+of the line or the comment begins and ends on the same line.
+The only comment method is /*...\n...*/
+
+Also now using exit() to close the program immediately upon an error instead
+of constantly testing for error. This also makes printing strings for the
+errors easier.

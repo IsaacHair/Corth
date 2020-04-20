@@ -40,7 +40,6 @@ struct b {
   unsigned long location;
 } *label = NULL;
 _Bool comment;
-int error;
 unsigned long location;
 
 void backline(FILE* sfd){
@@ -56,7 +55,7 @@ void backline(FILE* sfd){
 }
 
 int linedepth(char* buff) {
-  long i;
+  unsigned long i;
   //just keep seeing how many tabs there are at the start
   for (i = 0; buff[i] == '\t' && buff[i] != '\0'; i++)
     ;
@@ -139,9 +138,6 @@ int insertline(struct l** point, FILE* sfd, long depth) {
   //increment across the lines in this block, increment line count each time
   for (i = 0; 1; i++) {
     printf("\ninsertline.for: location:%d\n", location);
-    //check for an error on any level
-    if (error)
-      return 1;
     //allocate ram for this action and initialize
     if ((*point) == NULL)
       (*point) = malloc(sizeof(struct l)*(i+1));
@@ -229,24 +225,19 @@ void show(struct l* point) {
 
 int main(int argc, char* argv[]) {
   if (argc != 3) {
-    printf("error 1\nusage: cvm <source file> <target file>\n");
-    return 1;
+    printf("error 1 (decimal)\nusage: cvm <source file> <target file>\n");
+    exit(1);
   }
   FILE* sfd = fopen(argv[1], "rb");
   if (sfd == NULL) {
-    printf("error 2\nsource file not found\n");
-    return 2;
+    printf("error 2 (decimal)\nsource file not found\n");
+    exit(2);
   }
   comment = 0;
-  error = comment = 0;
   location = 1;
   printf("hola0\n");
   insertline(&line, sfd, 0);
   show(line);
   fclose(sfd);
-  if (error) {
-    printf("error %d on line %d\n", error, location);
-    return error;
-  }
   return 0;
 }
