@@ -6,11 +6,12 @@
 #define ELSE    2       //bit indicating "else" line
 #define ANIO    4       //use address not using i/o (1 = true; 0 = reverse)
 #define ASN     8       //bit indicating whether assignment occurs
-#define ARGS    16      //bits at 32 and 16 indicate the # of arguments (0 to 2)
-#define NORM    64      //bit indicating if this is a normal line (1 = yes)
+#define ARGS0   16      //bits at 32 and 16 indicate the # of arguments (0 to 2)
+#define ARGS1   32
+#define NORM    64      //bit indicating if this is a normal line (1 = normal)
 //special line indicators; use as the entire number
-#define TERM	0      //the program is done
-#define LABEL	1
+#define TERM	0       //the program is done
+#define SET	1       //set label
 #define GOTO	2
 #define INS	3	//insert macro
 #define LABELA	4	//label with an array
@@ -19,6 +20,8 @@
 #define FOR	7
 #define BEGCOM  8
 #define ENDCOM  9
+#define INT     10
+#define MACRO   11
 
 struct l {
   int type;
@@ -61,10 +64,56 @@ int linedepth(char* buff) {
     ;
   return i;
 }
+
+_Bool find(char* word, char* str, unsigned long place) {
+  unsigned long i, j;
+  for (i = 0, j = place; word[i] != '\0'; i++, j++)
+    if (word[i] != str[j])
+      return 0;
+  return 1;
+}
+
 int typeline(char* buff) {
   printf("typeline\n");
-  if (buff[0] == '\0')
+  unsigned long i;
+  unsigned long last;
+  unsigned long argc;
+  int type;
+  if (buff[2] == '\0')
     return TERM;
+  for (i = len = type = 0, argc = 1; buff[i] != '\0'; i++, last++)
+    ;
+  for (i = 0; buff[i] != '\0'; i++) {
+    if (i <= last)
+      if (find(":", buff, i))
+	type = SET;
+      else if (find(",", buff, i))
+	argc++;
+      else if (find(";", buff, i))
+	argc++;
+    if (i+1 <= last)
+      if (find("->", buff, i)) {
+	argc++;
+	type &= ASN;
+      }
+    if (i+3 <= last)
+      if (find(" if ", buff, i))
+	type |= IF;
+      else if (find(" in ", buff, i))
+	type &= ~ANIO;
+    if (i+4 <= last)
+      if (find(" adr ", buff, i))
+	type |= ANIO;
+      else if (find(" out ", buff, i))
+	type &= ~ANIO;
+      else if (find(" for ", buff, i))
+	type = FOR;
+      else if (find(" int ", buff, i))
+	type = INT;
+    if (i+5 <= last)
+      if (find(" goto ", buff, i))
+	type = GOTO;
+  }
   return 1;
 }
 
@@ -98,10 +147,11 @@ void grabline(char** buff, FILE* sfd) {
   printf("check i: %d\n", i);
   //allocate buffer
   //realloc prevents huge amounts of ram from being consumed
+  //there are 3 extra characters: ' ' at the start, ' ' at the end, then '\0'
   if (*buff == NULL)
-    *buff = malloc(sizeof(char)*(i+1));
+    *buff = malloc(sizeof(char)*(i+3));
   else
-    *buff = realloc(*buff, sizeof(char)*(i+1));
+    *buff = realloc(*buff, sizeof(char)*(i+3));
   //rewind file to re-read line
   //if the loop terminated because it was the end, then there is 1 less rewind
   if (notend)
@@ -109,19 +159,22 @@ void grabline(char** buff, FILE* sfd) {
   else
     fseek(sfd, -i, SEEK_CUR);
   //actually copy into the buffer
-  for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
+  //starting with i = 1 since this is the index; ' ' will be at [0] always
+  for (i = 1, notend = fread(&c, sizeof(char), 1, sfd);
        notend && c != 10 && c != 13;
        notend = fread(&c, sizeof(char), 1, sfd)) {
     printf("copy c = %d\n", c);
     (*buff)[i] = c;
     i++;
   }
-  //terminating character
-  (*buff)[i] = '\0';
+  //terminating character and padding ' '
+  (*buff)[0] = ' ';
+  (*buff)[i] = ' ';
+  (*buff)[i+1] = '\0';
   printf("i = %d; got line:%s\n", i, *buff);
   //if the line is blank, increase the location count and grab a non-blank one
   //returning a blank line indicates the end of the file
-  if (notend && i == 0) {
+  if (notend && i == 1) {
     location++;
     grabline(buff, sfd);
   }
@@ -129,6 +182,14 @@ void grabline(char** buff, FILE* sfd) {
   //just after the f i r s t line terminating character.
 }
 
+void initint(char* buff) {
+  unsigned long i;
+  char* name;
+  for (i = 5; buff[i] != '\0'; i++)
+    if (buff[i] == ' ')
+      continue;
+}
+    
 int insertline(struct l** point, FILE* sfd, long depth) {
   //initialize for memory management ease of use
   char* buff = NULL;
@@ -169,6 +230,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
       //create a new instance inside the struct and re-read the same line
       //once done, simply continue where you left off
       //move i to the correct index
+      //avoid incrementing location
       if (linedepth(buff) > depth) {
 	printf("depth increase yall\n");
 	backline(sfd);
@@ -179,14 +241,26 @@ int insertline(struct l** point, FILE* sfd, long depth) {
       }
       //return to the previous instance after marking this as the end
       //again, rewind a line to allow continuing from where you left off
+      //avoid incrementing location
       else if (linedepth(buff) < depth) {
 	printf("depth decrease yall\n");
 	(*point)[i].type = TERM;
 	backline(sfd);
 	return 0;
       }
-      //insert the line if the depth is the same
-      if (type > 0) {
+      //check for lines that provide compiler initiation instructions
+      //do not save these lines but d o increment location
+      if (type == INT) {
+	initint(buff);
+	i--;
+      }
+      else if (type == MACRO) {
+	initmacro(buff);
+	i--;
+      }
+      //insert the line if the depth is the same and it needs to be saved
+      //save the lines and increment the location
+      else if (type > 0) {
 	(*point)[i].type = type;
 	(*point)[i].location = location;
 	for (j = 0; buff[j] != TERM; j++)
