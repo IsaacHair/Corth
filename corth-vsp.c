@@ -66,7 +66,7 @@ int typeline(char* buff) {
   printf("typeline\n");
   if (buff[0] == '\0')
     return TERM;
-  return E;
+  return 1;
 }
 
 void grabline(char** buff, FILE* sfd) {
@@ -190,8 +190,8 @@ int insertline(struct l** point, FILE* sfd, long depth) {
 	return 0;
       }
       //insert the line if the depth is the same
-      if (type == E) {
-	(*point)[i].type = E;
+      if (type > 0) {
+	(*point)[i].type = type;
 	(*point)[i].location = location;
 	for (j = 0; buff[j] != TERM; j++)
 	  ;
