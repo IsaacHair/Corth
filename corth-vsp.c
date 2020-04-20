@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
     printf("error 2\nsource file not found\n");
     return 2;
   }
-  _Bool comment = 0;
+  comment = 0;
   error = comment = 0;
   location = 1;
   printf("hola0\n");
