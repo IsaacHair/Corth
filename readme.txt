@@ -652,3 +652,6 @@ though.
 
 The actual program also has error and line counters, etc. See the actual
 program for the details; this readme is just an outline.
+Also, the syntax for comments requires the code to begin on the line after
+the comment is terminated. There are other minor updates too, like the ->
+operator.

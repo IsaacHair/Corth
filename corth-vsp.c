@@ -1,40 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//normal line indicators; all arguments are expressions; use as flag bits
+#define IF      1       //bit indicating whether this is an "if" line
+#define ELSE    2       //bit indicating "else" line
+#define ANIO    4       //use address not using i/o (1 = true; 0 = reverse)
+#define ASN     8       //bit indicating whether assignment occurs
+#define ARGS    16      //bits at 32 and 16 indicate the # of arguments (0 to 2)
+#define NORM    64      //bit indicating if this is a normal line (1 = yes)
+//special line indicators; use as the entire number
 #define TERM	0      //the program is done
 #define LABEL	1
 #define GOTO	2
 #define INS	3	//insert macro
-#define II0	4	//if in, 0 arguments
-#define II1	5	//if in, mask
-#define IA0	6	//if address, 0 arguments
-#define IA1	7	//if address, value to set address to only
-#define IA2	8	//if address, value to set address to and mask
-#define IA0A	9	//previous def + assignment
-#define IA1A	10	//previous def + assignment
-#define IA2A	11	//previous def + assignment
-#define E	12	//else
-#define EII0	13	//else + previous def (this is the same for the rest)
-#define EII1	14
-#define EIA0	15
-#define EIA1	16
-#define EIA2	17
-#define EIA0A	18
-#define EIA1A	19
-#define EIA2A	20
-#define A1	21
-#define A2	22
-#define A0A	23
-#define A1A	24
-#define A2A	25
-#define O1	26
-#define O2	27
-#define LABELA	28	//label with an array
-#define GOTOA	29	//goto with an array
-#define INSA	30	//insert with an array
-#define FOR	31
-#define BEGCOM  32
-#define ENDCOM  33
+#define LABELA	4	//label with an array
+#define GOTOA	5	//goto with an array
+#define INSA	6	//insert with an array
+#define FOR	7
+#define BEGCOM  8
+#define ENDCOM  9
 
 struct l {
   int type;
@@ -150,6 +134,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
   //initialize for memory management ease of use
   char* buff = NULL;
   long i, j;
+  int type;
   printf("insertline\n");
   //increment across the lines in this block, increment line count each time
   for (i = 0; 1; i++) {
@@ -164,16 +149,22 @@ int insertline(struct l** point, FILE* sfd, long depth) {
       (*point) = realloc((*point), sizeof(struct l)*(i+1));
     (*point)[i].line = NULL;
     (*point)[i].arg = NULL;
-    //get the next n o n b l a n k line; blank line in buff[] = end of file
+    //get the next n o n - b l a n k line; blank line in buff[] = end of file
     grabline(&buff, sfd);
     printf("gotline:");
     printf("%s\n", buff);
-    //handle comments and ending first
-    if (typeline(buff) == BEGCOM)
+    //figure out the type of the line
+    type = typeline(buff);
+    //handle comments and ending first and ignore if the line contains a comment
+    if (type == BEGCOM) {
       comment = 1;
-    else if (typeline(buff) == ENDCOM)
+      continue;
+    }
+    else if (type == ENDCOM) {
       comment = 0;
-    if (typeline(buff) == TERM) {
+      continue;
+    }
+    if (type == TERM) {
       (*point)[i].type = TERM;
       return 0;
     }
@@ -199,8 +190,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
 	return 0;
       }
       //insert the line if the depth is the same
-      switch (typeline(buff)) {
-      case E:
+      if (type == E) {
 	(*point)[i].type = E;
 	(*point)[i].location = location;
 	for (j = 0; buff[j] != TERM; j++)
@@ -210,11 +200,10 @@ int insertline(struct l** point, FILE* sfd, long depth) {
 	for (j = 0; buff[j] != TERM; j++)
 	  (*point)[i].arg[0][j] = buff[j];
 	(*point)[i].arg[0][j] = TERM;
-	break;
       }
     }
     //get rid of this line if it is a comment but don't reduce location count
-    else
+    if (comment)
       i--;
     //increase location after handling the line only if it's the right depth
     location++;
