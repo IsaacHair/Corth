@@ -55,6 +55,8 @@ void backline(FILE* sfd){
        c != 10 && !fseek(sfd, -2, SEEK_CUR);
        fread(&c, sizeof(char), 1, sfd))
     ;
+  //decrease line count
+  location--;
 }
 
 int linedepth(char* buff) {
@@ -81,7 +83,7 @@ int typeline(char* buff) {
   int type;
   if (buff[2] == '\0')
     return TERM;
-  for (i = len = type = 0, argc = 1; buff[i] != '\0'; i++, last++)
+  for (i = last = type = 0, argc = 1; buff[i] != '\0'; i++, last++)
     ;
   for (i = 0; buff[i] != '\0'; i++) {
     if (i <= last)
@@ -174,15 +176,17 @@ void grabline(char** buff, FILE* sfd) {
   (*buff)[i] = ' ';
   (*buff)[i+1] = '\0';
   printf("i = %d; got line:%s\n", i, *buff);
-  //if the line is blank, increase the location count and grab a non-blank one
+  //increase line count
+  location++;
+  //if the line is blank, grab a non-blank one
   //returning a blank line indicates the end of the file
-  if (notend && i == 1) {
-    location++;
+  if (notend && i == 1)
     grabline(buff, sfd);
-  }
   //This function will leave the file cursor about to read the character
   //just after the f i r s t line terminating character.
 }
+
+void initmacro(char*buff) {}
 
 void initint(char* buff) {
   unsigned long i, j;
@@ -205,7 +209,7 @@ void initint(char* buff) {
     if (tinybuff == NULL)
       tinybuff = malloc(sizeof(char)*(j+1));
     else
-      tinybuff = realloc(name, sizeof(char)*(j+1));
+      tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
     //go back to the start of the name
     i -= j;
     if (j == 0) {
@@ -218,6 +222,9 @@ void initint(char* buff) {
 	   buff[i] != ' '; j++, i++)
       tinybuff[j] = buff[i];
     tinybuff[j] = '\0';
+    if (buff[i] == '\0')
+      break;
+  }
 }
     
 int insertline(struct l** point, FILE* sfd, long depth) {
@@ -307,8 +314,6 @@ int insertline(struct l** point, FILE* sfd, long depth) {
     //get rid of this line if it is a comment but don't reduce location count
     if (comment)
       i--;
-    //increase location after handling the line only if it's the right depth
-    location++;
   }
 }
 
@@ -340,7 +345,7 @@ int main(int argc, char* argv[]) {
     exit(0x02);
   }
   comment = 0;
-  location = 1;
+  location = 0;
   printf("hola0\n");
   insertline(&line, sfd, 0);
   show(line);
