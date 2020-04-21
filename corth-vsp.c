@@ -91,6 +91,8 @@ int typeline(char* buff) {
 	argc++;
       else if (find(";", buff, i))
 	argc++;
+      else if (find("#", buff, i))
+	type = MACRO;
     if (i+1 <= last)
       if (find("->", buff, i)) {
 	argc++;
@@ -183,11 +185,39 @@ void grabline(char** buff, FILE* sfd) {
 }
 
 void initint(char* buff) {
-  unsigned long i;
-  char* name;
-  for (i = 5; buff[i] != '\0'; i++)
-    if (buff[i] == ' ')
-      continue;
+  unsigned long i, j;
+  char* tinybuff;
+  for (i = 5, tinybuff = NULL; 1;) {
+    //scan for start of name
+    //note: ' ' is not expected in the name and, if present, will result in
+    //the space being removed
+    while(buff[i] == ' ')
+      i++;
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++)
+      //if there is a space not at the very end where ' ' is added
+      if (buff[i] == ' ' && buff[i+1] != '\0')
+	j--;
+      else if (buff[i] == ' ') {
+	printf("error 0x04\nL%d: Space within variable name\n", location);
+	exit(0x04);
+      }
+    //allocate memory
+    if (tinybuff == NULL)
+      tinybuff = malloc(sizeof(char)*(j+1));
+    else
+      tinybuff = realloc(name, sizeof(char)*(j+1));
+    //go back to the start of the name
+    i -= j;
+    if (j == 0) {
+      printf("error 0x03\nL%d: Empty declaration\n", location);
+      exit(0x03);
+    }
+    //just check for space as an indicator now; it is the char before '\0'
+    //just getting the tagline for now; need to check if it is an array
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0' &&
+	   buff[i] != ' '; j++, i++)
+      tinybuff[j] = buff[i];
+    tinybuff[j] = '\0';
 }
     
 int insertline(struct l** point, FILE* sfd, long depth) {
@@ -198,7 +228,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
   printf("insertline\n");
   //increment across the lines in this block, increment line count each time
   for (i = 0; 1; i++) {
-    printf("\ninsertline.for: location:%d\n", location);
+    printf("insertline.for\n");
     //allocate ram for this action and initialize
     if ((*point) == NULL)
       (*point) = malloc(sizeof(struct l)*(i+1));
@@ -208,6 +238,8 @@ int insertline(struct l** point, FILE* sfd, long depth) {
     (*point)[i].arg = NULL;
     //get the next n o n - b l a n k line; blank line in buff[] = end of file
     grabline(&buff, sfd);
+    //variable location is now constant for the remainder of the loop
+    printf("\ninsertline.for: location:%d\n", location);
     printf("gotline:");
     printf("%s\n", buff);
     //figure out the type of the line
@@ -299,13 +331,13 @@ void show(struct l* point) {
 
 int main(int argc, char* argv[]) {
   if (argc != 3) {
-    printf("error 1 (decimal)\nusage: cvm <source file> <target file>\n");
-    exit(1);
+    printf("error 0x01\nusage: cvm <source file> <target file>\n");
+    exit(0x01);
   }
   FILE* sfd = fopen(argv[1], "rb");
   if (sfd == NULL) {
-    printf("error 2 (decimal)\nsource file not found\n");
-    exit(2);
+    printf("error 0x02\nsource file not found\n");
+    exit(0x02);
   }
   comment = 0;
   location = 1;
