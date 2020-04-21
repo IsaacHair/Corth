@@ -24,15 +24,10 @@
 #define MACRO   11
 
 //ram and initializations
-struct l {
-  int type;
-  unsigned long location;
-  char** arg;
-  struct l* line;
-} *line = NULL;
 struct m {
   char* name;
-  struct l* line;
+  unsigned long size;
+  unsigned long* sidx;
 } *macro = NULL;
 unsigned long mcount = 0;
 struct r {
@@ -41,13 +36,20 @@ struct r {
   unsigned long* value;
 } *ram = NULL;
 unsigned long rcount = 0;
-struct b {
+struct l {
   char* name;
-  unsigned long location;
+  unsigned long gotosize;
+  unsigned long* gotosidx;
+  _Bool set;
+  unsigned long setidx;
 } *label = NULL;
-unsigned long lcount = 0;
 _Bool comment = 0;
-unsigned long location = 0;
+//current line in source file
+unsigned long sline = 0;
+//cursor location in target file
+unsigned long tidx = 0;
+//cursor location in source file
+unsigned long sidx = 0;
 
 void backline(FILE* sfd){
   char c;
@@ -55,12 +57,18 @@ void backline(FILE* sfd){
   //keep going back until a newline character is identified
   //Testing fseek ensures that, if this is the start of the file,
   //the loop will not continue forever.
+  //Note that sidx needs to indicate which character this is at for
+  //macro insertion purposes
   for (fseek(sfd, -2, SEEK_CUR), fread(&c, sizeof(char), 1, sfd);
        c != 10 && !fseek(sfd, -2, SEEK_CUR);
        fread(&c, sizeof(char), 1, sfd))
-    ;
+    sidx--;
+  if (sidx > 0)
+    sidx--;
+  else
+    sidx = 0;
   //decrease line count
-  location--;
+  sline--;
 }
 
 int linedepth(char* buff) {
@@ -187,6 +195,7 @@ void grabline(char** buff, FILE* sfd) {
   //allows end of the file to be identified; fread will return 0
   int notend;
   //skip all the garbage that marks the end of the line (might be >1 characters)
+  //handle sidx too
   for (notend = fread(&c, sizeof(char), 1, sfd);
        notend && (c == 10 || c == 13);
        notend = fread(&c, sizeof(char), 1, sfd)) {
@@ -195,17 +204,21 @@ void grabline(char** buff, FILE* sfd) {
       fread(&c, sizeof(char), 1, sfd);
       break;
     }
+    sidx++;
   }
   //go back so that the valid character is seen; if !notend, then not needed
+  //also means that sidx is in the correct spot
   if (notend)
     fseek(sfd, -1, SEEK_CUR);
   //read line until you reach a terminating character
   //just finding the size of the buffer right now
+  //handle sidx
   for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
        notend && c != 10 && c != 13;
        notend = fread(&c, sizeof(char), 1, sfd)) {
     printf("check c = %d\n", c);
     i++;
+    sidx++;
   }
   printf("check i: %d\n", i);
   //allocate buffer
@@ -217,8 +230,12 @@ void grabline(char** buff, FILE* sfd) {
     *buff = realloc(*buff, sizeof(char)*(i+3));
   //rewind file to re-read line
   //if the loop terminated because it was the end, then there is 1 less rewind
-  if (notend)
+  //only need to increment sidx if not end
+  //the rest of the function will just return to this sidx spot so it is good
+  if (notend) {
+    sidx++;
     fseek(sfd, -(i+1), SEEK_CUR);
+  }
   else
     fseek(sfd, -i, SEEK_CUR);
   //actually copy into the buffer
@@ -236,7 +253,7 @@ void grabline(char** buff, FILE* sfd) {
   (*buff)[i+1] = '\0';
   printf("i = %d; got line:%s\n", i, *buff);
   //increase line count
-  location++;
+  sline++;
   //if the line is blank, grab a non-blank one
   //returning a blank line indicates the end of the file
   if (notend && i == 1)
@@ -342,7 +359,7 @@ void initint(char* buff) {
   }
 }
     
-int insertline(struct l** point, FILE* sfd, long depth) {
+int insertline(FILE* sfd, FILE* tfd, long depth) {
   //initialize for memory management ease of use
   char* buff = NULL;
   char* tinybuff = NULL;
@@ -351,18 +368,11 @@ int insertline(struct l** point, FILE* sfd, long depth) {
   int argc;
   printf("insertline\n");
   //increment across the lines in this block, increment line count each time
-  for (i = 0; 1; i++) {
+  while (1) {
     printf("insertline.for\n");
-    //allocate ram for this action and initialize
-    if ((*point) == NULL)
-      (*point) = malloc(sizeof(struct l)*(i+1));
-    else
-      (*point) = realloc((*point), sizeof(struct l)*(i+1));
-    (*point)[i].line = NULL;
-    (*point)[i].arg = NULL;
     //get the next n o n - b l a n k line; blank line in buff[] = end of file
+    //also add ' ' padding at start and end
     grabline(&buff, sfd);
-    //variable location is now constant for the remainder of the loop
     printf("\ninsertline.for: location:%d\n", location);
     printf("gotline:");
     printf("%s\n", buff);
@@ -392,7 +402,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
 	backline(sfd);
 	if (i > 0)
 	  i--;
-	insertline(&((*point)[i].line), sfd, depth+1);
+	insertline(sfd, tfd, depth+1);
 	continue;
       }
       //return to the previous instance after marking this as the end
