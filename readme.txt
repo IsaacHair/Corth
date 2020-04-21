@@ -672,3 +672,36 @@ The only comment method is /*...\n...*/
 Also now using exit() to close the program immediately upon an error instead
 of constantly testing for error. This also makes printing strings for the
 errors easier.
+
+Expressions can be used within variable declarations, but, if that expression
+contains any other variables, they must have already been declared.
+For all other expressions, the variable does not have to be declared already.
+For macros, the macro can be declared anywhere, but a macro cannot contain
+a definition for another macro.
+
+********
+
+Screw it, the compilation process will work best in only one pass. Basically,
+all variables must be declared before use. All macros must be declared before
+use. Also, labels and gotos will work in a somewhat interesting way. If a label
+appears before a goto calling that label is ever stated, then the label's
+location is simply saved and the goto(s) can jump there, nothing too difficult.
+However, if the label appears after its corresponding goto(s), then each
+goto statement simply does not jump anywhere. The goto next address is filled
+in with 0000 or something. Anyways, the cursor location of that 0000 is saved
+for each goto. Once the label is identified, then the cursor location is saved,
+and the program goes back to each cursor location for those gotos and inserts
+the program address of the label, then jumps back to the label.
+Basically, this is how the program address counter works:
+It starts at 0000 and increments by one for each instruction.
+If there is an if-else statement or a chain of if, else-if, else-if ...
+then each line containing an if will jump to two locations, both as close
+as possible to the end of the statement and obviously one being an odd address
+and the other being an even address. The odd address will just contain the
+body of the if statement. The even address, which should be right before the odd
+address, will be left and have its cursor location saved until the else
+statement is reached, at this point, it will contain the body of that statement.
+If it is actually an else-if, this is fine; the body of the else statement is
+just another "if" and the "if" protocol is just repeated.
+Hold on... in a way, the file doesn't need to be loaded into ram at all at this
+point, it will just be directly processed into another file.

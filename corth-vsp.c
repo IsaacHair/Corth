@@ -23,6 +23,7 @@
 #define INT     10
 #define MACRO   11
 
+//ram and initializations
 struct l {
   int type;
   unsigned long location;
@@ -33,17 +34,20 @@ struct m {
   char* name;
   struct l* line;
 } *macro = NULL;
+unsigned long mcount = 0;
 struct r {
   char* name;
   unsigned long size;
   unsigned long* value;
 } *ram = NULL;
+unsigned long rcount = 0;
 struct b {
   char* name;
   unsigned long location;
 } *label = NULL;
-_Bool comment;
-unsigned long location;
+unsigned long lcount = 0;
+_Bool comment = 0;
+unsigned long location = 0;
 
 void backline(FILE* sfd){
   char c;
@@ -81,16 +85,26 @@ int typeline(char* buff) {
   unsigned long last;
   unsigned long argc;
   int type;
+  //if the line is blank except for padding ' 's and '\0'
   if (buff[2] == '\0')
     return TERM;
   //find the length
   for (i = last = 0, argc = 1; buff[i] != '\0'; i++, last++)
     ;
   //set type to term; it should be changed; if not, it is a macro call
-  type = TERM;
+  //THIS RELIES ON THE FACT THAT TERM IS ZERO
+  //MAYBE THIS IS A BAD IDEA
+  //JUST SETTING TO ZERO ACTUALLY
+  type = 0;
   //scan for key words and tokens; mixing setting bits and full assignment is ok
   //this is because each line that is written correctly will only use one
   //have to break for comments because they can contain anything
+  //if there are components of normal and special lines, there will either
+  //be an invalid line type that results in a fatal error or
+  //the line type will just be unexpected but still work
+  //In this case, if there are too few arguments, a fatal error will be thrown;
+  //if there is the correct number or even too many no error will be thown
+  //actually maybe there will be; refer to the function that grabs arguments
   for (i = 0; buff[i] != '\0'; i++) {
     if (i <= last)
       if (find(":", buff, i))
@@ -107,7 +121,7 @@ int typeline(char* buff) {
 	else if (type == GOTO)
 	  type = GOTOA;
         //testing for TERM because that is the default for INS
-	else if (type == TERM)
+	else if (type == 0)
 	  type = INSA;
     if (i+1 <= last)
       if (find("->", buff, i)) {
@@ -154,7 +168,7 @@ int typeline(char* buff) {
       }
   }
   //the only possibility left is a macro call
-  if (type == TERM)
+  if (type == 0)
     type = INS;
   //set the number of arguments if this is a normal line
   if (type&NORM) {
@@ -241,9 +255,14 @@ void grabargs(char* buff, char*** point, int argc) {}
 
 void initmacro(char* buff) {}
 
+void simplify(char* buff) {}
+
+unsigned long hexstrnum(char* buff) {}
+
 void initint(char* buff) {
   unsigned long i, j;
   char* tinybuff;
+  unsigned long size;
   for (i = 5, tinybuff = NULL; 1;) {
     //scan for start of name
     //note: ' ' is not expected in the name and, if present, will result in
@@ -258,23 +277,66 @@ void initint(char* buff) {
 	printf("error 0x04\nL%d: Space within variable name\n", location);
 	exit(0x04);
       }
-    //allocate memory
-    if (tinybuff == NULL)
-      tinybuff = malloc(sizeof(char)*(j+1));
-    else
-      tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
     //go back to the start of the name
     i -= j;
     if (j == 0) {
       printf("error 0x03\nL%d: Empty declaration\n", location);
       exit(0x03);
     }
+    //actually save the name
+    //also increment the number of variables
+    //also malloc the first portion
+    rcount++;
+    if (ram == NULL)
+      ram = malloc(sizeof(struct r)*rcount);
+    else
+      ram = realloc(ram, sizeof(struct r)*rcount);
+    ram[rcount-1].name = malloc(sizeof(char)*(j+1));
     //just check for space as an indicator now; it is the char before '\0'
     //just getting the tagline for now; need to check if it is an array
     for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0' &&
 	   buff[i] != ' '; j++, i++)
-      tinybuff[j] = buff[i];
-    tinybuff[j] = '\0';
+      ram[rcount-1].name[j] = buff[i];
+    ram[rcount-1].name[j] = '\0';
+    //Array handling; the [] part is not included in the name,
+    //it will decide the size of the memory allocation.
+    //The size is stored along with the variable name
+    //to avoid accidental attempts to read unallocated memory.
+    //after the number inside [] is identified and used
+    //(w r i t t e n  i n  h e x)
+    //i will be incremented until ',' or '\0' is identified.
+    if (buff[i] == '[') {
+      for (j = 0, i++; buff[i] != ']'; i++, j++)
+	if (buff[i] == '\0') {
+	  printf("error 0x06\nL%d: incomplete array declaration\n", location);
+	  exit(0x06);
+	}
+      //allocate memory
+      if (tinybuff == NULL)
+	tinybuff = malloc(sizeof(char)*(j+1));
+      else
+	tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
+      i -= j;
+      //just insert the string now that the size is known
+      //the statement is not going to terminate before ']'; that was already
+      //checked for
+      for (j = 0; buff[i] != ']'; i++, j++)
+	tinybuff[j] = buff[i];
+      tinybuff[j] = '\0';
+      //converting the expression to an unsigned long
+      simplify(tinybuff);
+      size = hexstrnum(tinybuff);
+      //saving the value in ram
+      ram[rcount-1].size = size;
+      ram[rcount-1].value = malloc(sizeof(unsigned long)*size);
+    }
+    else {
+      ram[rcount-1].size = 1;
+      ram[rcount-1].value = malloc(sizeof(unsigned long));
+    }
+    //move past the end of this statement
+    i++;
+    //line is done
     if (buff[i] == '\0')
       break;
   }
@@ -372,7 +434,7 @@ int insertline(struct l** point, FILE* sfd, long depth) {
       else if (type == SETA || type == INSA || type == GOTOA)
 	strnumarg(buff, &((*point)[i].arg));
       else {
-	printf("error 0x05\nL%d: undefined line type (%d)", location, type);
+	printf("error 0x05\nL%d: undefined line type %d\n", location, type);
 	exit(0x05);
       }
     }
@@ -409,8 +471,6 @@ int main(int argc, char* argv[]) {
     printf("error 0x02\nsource file not found\n");
     exit(0x02);
   }
-  comment = 0;
-  location = 0;
   printf("hola0\n");
   insertline(&line, sfd, 0);
   show(line);
