@@ -14,7 +14,7 @@
 #define SET	1       //set label
 #define GOTO	2
 #define INS	3	//insert macro
-#define LABELA	4	//label with an array
+#define SETA	4	//label with an array
 #define GOTOA	5	//goto with an array
 #define INSA	6	//insert with an array
 #define FOR	7
@@ -83,8 +83,14 @@ int typeline(char* buff) {
   int type;
   if (buff[2] == '\0')
     return TERM;
-  for (i = last = type = 0, argc = 1; buff[i] != '\0'; i++, last++)
+  //find the length
+  for (i = last = 0, argc = 1; buff[i] != '\0'; i++, last++)
     ;
+  //set type to term; it should be changed; if not, it is a macro call
+  type = TERM;
+  //scan for key words and tokens; mixing setting bits and full assignment is ok
+  //this is because each line that is written correctly will only use one
+  //have to break for comments because they can contain anything
   for (i = 0; buff[i] != '\0'; i++) {
     if (i <= last)
       if (find(":", buff, i))
@@ -95,21 +101,46 @@ int typeline(char* buff) {
 	argc++;
       else if (find("#", buff, i))
 	type = MACRO;
+      else if (find("[", buff, i))
+	if (type == SET)
+	  type = SETA;
+	else if (type == GOTO)
+	  type = GOTOA;
+        //testing for TERM because that is the default for INS
+	else if (type == TERM)
+	  type = INSA;
     if (i+1 <= last)
       if (find("->", buff, i)) {
 	argc++;
-	type &= ASN;
+	type |= NORM;
+	type |= ASN;
+      }
+      else if (find("/*", buff, i)) {
+	type = BEGCOM;
+	break;
+      }
+      else if (find("*/", buff, i)) {
+	type = ENDCOM;
+	break;
       }
     if (i+3 <= last)
-      if (find(" if ", buff, i))
+      if (find(" if ", buff, i)) {
+	type |= NORM;
 	type |= IF;
-      else if (find(" in ", buff, i))
+      }
+      else if (find(" in ", buff, i)) {
+	type |= NORM;
 	type &= ~ANIO;
+      }
     if (i+4 <= last)
-      if (find(" adr ", buff, i))
+      if (find(" adr ", buff, i)) {
+	type |= NORM;
 	type |= ANIO;
-      else if (find(" out ", buff, i))
+      }
+      else if (find(" out ", buff, i)) {
+	type |= NORM;
 	type &= ~ANIO;
+      }
       else if (find(" for ", buff, i))
 	type = FOR;
       else if (find(" int ", buff, i))
@@ -117,8 +148,22 @@ int typeline(char* buff) {
     if (i+5 <= last)
       if (find(" goto ", buff, i))
 	type = GOTO;
+      else if (find(" else ", buff, i)) {
+	type |= NORM;
+	type |= ELSE;
+      }
   }
-  return 1;
+  //the only possibility left is a macro call
+  if (type == TERM)
+    type = INS;
+  //set the number of arguments if this is a normal line
+  if (type&NORM) {
+    if (argc&1)
+      type |= ARGS0;
+    if (argc&2)
+      type |= ARGS1;
+  }
+  return type;
 }
 
 void grabline(char** buff, FILE* sfd) {
@@ -186,7 +231,15 @@ void grabline(char** buff, FILE* sfd) {
   //just after the f i r s t line terminating character.
 }
 
-void initmacro(char*buff) {}
+void forargs(char* buff, char*** point) {}
+
+void strarg(char* buff, char*** point) {}
+
+void strnumarg(char* buff, char*** point) {}
+
+void grabargs(char* buff, char*** point, int argc) {}
+
+void initmacro(char* buff) {}
 
 void initint(char* buff) {
   unsigned long i, j;
@@ -230,8 +283,10 @@ void initint(char* buff) {
 int insertline(struct l** point, FILE* sfd, long depth) {
   //initialize for memory management ease of use
   char* buff = NULL;
+  char* tinybuff = NULL;
   long i, j;
   int type;
+  int argc;
   printf("insertline\n");
   //increment across the lines in this block, increment line count each time
   for (i = 0; 1; i++) {
@@ -299,16 +354,26 @@ int insertline(struct l** point, FILE* sfd, long depth) {
       }
       //insert the line if the depth is the same and it needs to be saved
       //save the lines and increment the location
-      else if (type > 0) {
-	(*point)[i].type = type;
-	(*point)[i].location = location;
-	for (j = 0; buff[j] != TERM; j++)
-	  ;
-	(*point)[i].arg = malloc(sizeof(char*)*1);
-	(*point)[i].arg[0] = malloc(sizeof(char)*(j+1));
-	for (j = 0; buff[j] != TERM; j++)
-	  (*point)[i].arg[0][j] = buff[j];
-	(*point)[i].arg[0][j] = TERM;
+      (*point)[i].type = type;
+      (*point)[i].location = location;
+      //starting by looking at NORM type lines
+      else if (type & NORM) {
+	argc = 0;
+	if (type & ARGS0)
+	  argc += 1;
+	if (type & ARGS1)
+	  argc += 2;
+	grabargs(buff, &((*point)[i].arg), argc);
+      }
+      else if (type == FOR)
+	forargs(buff, &((*point)[i].arg));
+      else if (type == SET || type == INS || type == GOTO)
+	strarg(buff, &((*point)[i].arg));
+      else if (type == SETA || type == INSA || type == GOTOA)
+	strnumarg(buff, &((*point)[i].arg));
+      else {
+	printf("error 0x05\nL%d: undefined line type (%d)", location, type);
+	exit(0x05);
       }
     }
     //get rid of this line if it is a comment but don't reduce location count
