@@ -39,9 +39,9 @@ unsigned long rcount = 0;
 struct l {
   char* name;
   unsigned long gotosize;
-  unsigned long* gotosidx;
+  unsigned long* gototidx;
   _Bool set;
-  unsigned long setidx;
+  unsigned long settidx;
 } *label = NULL;
 _Bool comment = 0;
 //current line in source file
@@ -50,8 +50,10 @@ unsigned long sline = 0;
 unsigned long tidx = 0;
 //cursor location in source file
 unsigned long sidx = 0;
+//line length in chars for target file
+#define LINESIZE 14
 
-void backline(FILE* sfd){
+void backline(FILE* sfd) {
   char c;
   printf("backline\n");
   //keep going back until a newline character is identified
@@ -262,19 +264,9 @@ void grabline(char** buff, FILE* sfd) {
   //just after the f i r s t line terminating character.
 }
 
-void forargs(char* buff, char*** point) {}
-
-void strarg(char* buff, char*** point) {}
-
-void strnumarg(char* buff, char*** point) {}
-
-void grabargs(char* buff, char*** point, int argc) {}
-
 void initmacro(char* buff) {}
 
-void simplify(char* buff) {}
-
-unsigned long hexstrnum(char* buff) {}
+unsigned long expr(char* buff, unsigned long i) {}
 
 void initint(char* buff) {
   unsigned long i, j;
@@ -291,13 +283,13 @@ void initint(char* buff) {
       if (buff[i] == ' ' && buff[i+1] != '\0')
 	j--;
       else if (buff[i] == ' ') {
-	printf("error 0x04\nL%d: Space within variable name\n", location);
+	printf("error 0x04\nL%d: Space within variable name\n", sline);
 	exit(0x04);
       }
     //go back to the start of the name
     i -= j;
     if (j == 0) {
-      printf("error 0x03\nL%d: Empty declaration\n", location);
+      printf("error 0x03\nL%d: Empty declaration\n", sline);
       exit(0x03);
     }
     //actually save the name
@@ -325,7 +317,7 @@ void initint(char* buff) {
     if (buff[i] == '[') {
       for (j = 0, i++; buff[i] != ']'; i++, j++)
 	if (buff[i] == '\0') {
-	  printf("error 0x06\nL%d: incomplete array declaration\n", location);
+	  printf("error 0x06\nL%d: incomplete array declaration\n", sline);
 	  exit(0x06);
 	}
       //allocate memory
@@ -341,8 +333,7 @@ void initint(char* buff) {
 	tinybuff[j] = buff[i];
       tinybuff[j] = '\0';
       //converting the expression to an unsigned long
-      simplify(tinybuff);
-      size = hexstrnum(tinybuff);
+      size = expr(tinybuff, 0);
       //saving the value in ram
       ram[rcount-1].size = size;
       ram[rcount-1].value = malloc(sizeof(unsigned long)*size);
@@ -360,25 +351,17 @@ void initint(char* buff) {
 }
     
 int insertline(FILE* sfd, FILE* tfd, long depth) {
-  //initialize for memory management ease of use
-  char* buff = NULL;
-  char* tinybuff = NULL;
-  long i, j;
-  int type;
+  int type, nexttype;
   int argc;
-  printf("insertline\n");
-  //increment across the lines in this block, increment line count each time
+  char c;
+  int i;
+  unsigned long noop;
+  unsigned long iflast;
+  unsigned long fbstart;
+  unsigned long mbstart;
   while (1) {
-    printf("insertline.for\n");
-    //get the next n o n - b l a n k line; blank line in buff[] = end of file
-    //also add ' ' padding at start and end
     grabline(&buff, sfd);
-    printf("\ninsertline.for: location:%d\n", location);
-    printf("gotline:");
-    printf("%s\n", buff);
-    //figure out the type of the line
     type = typeline(buff);
-    //handle comments and ending first and ignore if the line contains a comment
     if (type == BEGCOM) {
       comment = 1;
       continue;
@@ -388,69 +371,117 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
       continue;
     }
     if (type == TERM) {
-      (*point)[i].type = TERM;
+      usegotos();
       return 0;
     }
-    //if this is actually code, then use the line
     if (!comment) {
-      //create a new instance inside the struct and re-read the same line
-      //once done, simply continue where you left off
-      //move i to the correct index
-      //avoid incrementing location
-      if (linedepth(buff) > depth) {
-	printf("depth increase yall\n");
-	backline(sfd);
-	if (i > 0)
-	  i--;
-	insertline(sfd, tfd, depth+1);
-	continue;
-      }
-      //return to the previous instance after marking this as the end
-      //again, rewind a line to allow continuing from where you left off
-      //avoid incrementing location
-      else if (linedepth(buff) < depth) {
-	printf("depth decrease yall\n");
-	(*point)[i].type = TERM;
+      if (linedepth(buff) < depth) {
 	backline(sfd);
 	return 0;
       }
-      //check for lines that provide compiler initiation instructions
-      //do not save these lines but d o increment location
-      if (type == INT) {
+      if (tidx/LINESIZE >= (1<<16)) {
+	printf("error 0x07\nL%d: compiled program exceeds maximum size \
+(64k instructions)\n", sline);
+	exit(0x07);
+      }
+      if (type == INT)
 	initint(buff);
-	i--;
-      }
-      else if (type == MACRO) {
+      else if (type == MACRO)
 	initmacro(buff);
-	i--;
-      }
-      //insert the line if the depth is the same and it needs to be saved
-      //save the lines and increment the location
-      (*point)[i].type = type;
-      (*point)[i].location = location;
-      //starting by looking at NORM type lines
       else if (type & NORM) {
 	argc = 0;
 	if (type & ARGS0)
-	  argc += 1;
+	  argc |= 1;
 	if (type & ARGS1)
-	  argc += 2;
-	grabargs(buff, &((*point)[i].arg), argc);
+	  argc |= 2;
+	if ((type & ANIO) && (argc == 1)) {
+	  writecomm(tfd, "80", ~expr(buff, 0));
+	  writecomm(tfd, "a0", expr(buff, 0));
+	}
+	else if ((type & ANIO) && (argc > 1)) {
+	  writecomm(tfd, "80", (~expr(buff, 0))&expr(buff, 1));
+	  writecomm(tfd, "a0", (expr(buff, 0))&expr(buff, 1));
+	}
+	else if (!(type & ANIO) && (argc == 1) && !(type & IF)) {
+	  writecomm(tfd, "40", ~expr(buff, 0));
+	  writecomm(tfd, "60", expr(buff, 0));
+	}
+	else if (!(type & ANIO) && (argc > 1) && !(type & IF)) {
+	  writecomm(tfd, "40", (~expr(buff, 0))&expr(buff, 1));
+	  writecomm(tfd, "60", (expr(buff, 0))&expr(buff, 1));
+	}
+        if (type & ASN)
+	  if (!(type & ANIO)) {
+	    printf("error 0x08\nL%d: \
+assignment on an output statement\n", sline);
+	    exit(0x08);
+	  }
+	  else if (expr(buff, 2))
+	    writecomm(tfd, "e0", 0);
+	  else
+	    writecomm(tfd, "c0", 0);
+	if ((type & ELSE) && !(type & IF)) {
+	  insertline(sfd, tfd, depth+1);
+	  return 0;
+	} 
+	else if (type & IF) {
+	  if (!(tidx/LINESIZE%2))
+	    writecomm(tfd, "40", 0);
+	  if (type & ANIO)
+	    writecomm(tfd, "20", 0);
+	  else if (argc == 1)
+	    writecomm(tfd, "00", expr(buff, 0));
+	  else if (argc == 0)
+	    writecomm(tfd, "00", 65535);
+	  else {
+	    printf("error 0x09\nL%dtoo many arguments to 'if'\n", sline);
+	    exit(0x09);
+	  }
+	  noop = tidx;
+	  writecomm(tfd, "40", 0);
+	  insertline(sfd, tfd, depth+1);
+	  iflast = tidx-LINESIZE;
+	  setnext(tfd, noop, tidx/LINESIZE);
+	  grabline(&buff, sfd);
+	  nexttype = typeline(buff);
+	  backline(sfd);
+	  if (nexttype & ELSE) {
+	    insertline(sfd, tfd, depth);
+	    setnext(tfd, iflast, tidx/LINESIZE);
+	  }
+	  else
+	    setnext(tfd, iflast, tidx/LINESIZE);
+	  if (type & ELSE)
+	    return 0;
+	}
       }
-      else if (type == FOR)
-	forargs(buff, &((*point)[i].arg));
-      else if (type == SET || type == INS || type == GOTO)
-	strarg(buff, &((*point)[i].arg));
-      else if (type == SETA || type == INSA || type == GOTOA)
-	strnumarg(buff, &((*point)[i].arg));
+      else if (type == FOR) {
+	initfor(buff);
+	while (testfor(buff)) {
+	  fbstart = sidx;
+	  insertline(sfd, tfd, depth+1);
+	  incfor(buff);
+	  if (testfor(buff))
+	    movecur(sfd, fbstart);
+	}
+      }
+      else if (type == INS)
+	usemacro(buff, 0);
+      else if (type == INSA)
+	usemacro(buff, expr(buff, 0));
+      else if (type == SET)
+	setlabel(buff, 0);
+      else if (type == SETA)
+	setlabel(buff, expr(buff, 0));
+      else if (type == GOTO)
+	setgoto(buff, 0);
+      else if (type == GOTOA)
+	setgoto(buff, expr(buff, 0));
       else {
-	printf("error 0x05\nL%d: undefined line type %d\n", location, type);
+	printf("error 0x05\nL%d: undefined line type %d\n", sline, type);
 	exit(0x05);
       }
     }
-    //get rid of this line if it is a comment but don't reduce location count
-    if (comment)
-      i--;
   }
 }
 
