@@ -264,9 +264,61 @@ void grabline(char** buff, FILE* sfd) {
   //just after the f i r s t line terminating character.
 }
 
+void initfor(char* buff) {}
+
+_Bool testfor(char* buff) {
+  return 0;
+}
+
+void incfor(char* buff) {}
+
+void movecur(FILE* fd, unsigned long i) {}
+
+void usemacro(char* buff, unsigned long i) {}
+
+void setlabel(char* buff, unsigned long i) {}
+
+void setgoto(char* buff, unsigned long i) {}
+
 void initmacro(char* buff) {}
 
-unsigned long expr(char* buff, unsigned long i) {}
+void usegotos() {}
+
+unsigned long expr(char* buff, unsigned long i) {
+  return 69;
+}
+
+void setnext(FILE* fd, unsigned long i, unsigned long l) {
+  int a;
+  char c;
+  if (!fseek(fd, i+10, SEEK_SET)) {
+    printf("error 0x0a\nL%d: unable to access next re-write\n", sline);
+    exit(0x0a);
+  }
+  for (a=1<<12; a > (0 && (c = l/a%16+ (l/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+    fwrite(&c, sizeof(char), 1, fd);
+  if (!fseek(fd, tidx, SEEK_SET)) {
+    printf("error 0x0b\nL%d: unable to return to cursor location\n\
+this is most likely indicative of a severe compiler defect\n", sline);
+    exit(0x0b);
+  }
+}
+
+void writecomm(FILE* fd, char* opcode, unsigned long select) {
+  int a;
+  char c;
+  for (a=1<<12; a > (0 && (c = tidx/LINESIZE/a%16+
+			   (tidx/LINESIZE/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+    fwrite(&c, sizeof(char), 1, fd);
+  fwrite(opcode, sizeof(char), 2, fd);
+  for (a=1<<12; a > (0 && (c = select/a%16+
+			   (select/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+    fwrite(&c, sizeof(char), 1, fd);
+  tidx += LINESIZE;
+  for (a=1<<12; a > (0 && (c = tidx/LINESIZE/a%16+
+			   (tidx/LINESIZE/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+    fwrite(&c, sizeof(char), 1, fd);
+}
 
 void initint(char* buff) {
   unsigned long i, j;
@@ -355,6 +407,7 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
   int argc;
   char c;
   int i;
+  char* buff;
   unsigned long noop;
   unsigned long iflast;
   unsigned long fbstart;
@@ -485,23 +538,6 @@ assignment on an output statement\n", sline);
   }
 }
 
-void show(struct l* point) {
-  long i;
-
-  for (i = 0; point[i].type != TERM; i++) {
-    //printf("read: %d\n", point[i].type);
-    if (point[i].arg != NULL) {
-      printf("arg type%d location%d\t:%s\n", point[i].type, point[i].location,
-	     point[i].arg[0]);
-    }
-    if (point[i].line != NULL) {
-      //printf("nest\n");
-      show(point[i].line);
-    }
-  }
-  //printf("de-nest\n");
-}
-
 int main(int argc, char* argv[]) {
   if (argc != 3) {
     printf("error 0x01\nusage: cvm <source file> <target file>\n");
@@ -512,9 +548,10 @@ int main(int argc, char* argv[]) {
     printf("error 0x02\nsource file not found\n");
     exit(0x02);
   }
+  FILE* tfd = fopen(argv[2], "wb");
   printf("hola0\n");
-  insertline(&line, sfd, 0);
-  show(line);
+  insertline(sfd, tfd, 0);
   fclose(sfd);
+  fclose(tfd);
   return 0;
 }
