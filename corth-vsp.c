@@ -51,7 +51,7 @@ unsigned long tidx = 0;
 //cursor location in source file
 unsigned long sidx = 0;
 //line length in chars for target file
-#define LINESIZE 14
+#define LINESIZE 15
 
 void backline(FILE* sfd) {
   char c;
@@ -83,9 +83,21 @@ int linedepth(char* buff) {
 
 _Bool find(char* word, char* str, unsigned long place) {
   unsigned long i, j;
-  for (i = 0, j = place; word[i] != '\0'; i++, j++)
+  //~ is wildcard; it can even be before the start of str or '\0'
+  i = 0;
+  if (word[0] == '~') {
+    if (place > 0)
+      if (str[place-1] <= 'z' && str[place-1] >= 'a')
+	return 0;
+    i++;
+  }
+  for (j = place; word[i] != '\0' && word[i] != '~'; i++, j++)
     if (word[i] != str[j])
       return 0;
+  if (word[i] == '~')
+    if (str[j] <= 'z' && str[j] >= 'a')
+      return 0;
+  printf("found %s\n", word);
   return 1;
 }
 
@@ -96,16 +108,18 @@ int typeline(char* buff) {
   unsigned long argc;
   int type;
   //if the line is blank except for padding ' 's and '\0'
-  if (buff[2] == '\0')
+  if (buff[0] == '\0')
     return TERM;
   //find the length
-  for (i = last = 0, argc = 1; buff[i] != '\0'; i++, last++)
+  for (i = last = 0; buff[i] != '\0'; i++, last++)
     ;
   //set type to term; it should be changed; if not, it is a macro call
   //THIS RELIES ON THE FACT THAT TERM IS ZERO
   //MAYBE THIS IS A BAD IDEA
   //JUST SETTING TO ZERO ACTUALLY
   type = 0;
+  //init argc
+  argc = 0;
   //scan for key words and tokens; mixing setting bits and full assignment is ok
   //this is because each line that is written correctly will only use one
   //have to break for comments because they can contain anything
@@ -136,7 +150,8 @@ int typeline(char* buff) {
     if (i+1 <= last)
       if (find("->", buff, i)) {
 	argc++;
-	type |= NORM;
+	if (!(type&NORM))
+	  type = NORM;
 	type |= ASN;
       }
       else if (find("/*", buff, i)) {
@@ -147,39 +162,46 @@ int typeline(char* buff) {
 	type = ENDCOM;
 	break;
       }
-    if (i+3 <= last)
-      if (find(" if ", buff, i)) {
-	type |= NORM;
+      else if (find("~if~", buff, i)) {
+        if (!(type&NORM))
+	  type = NORM;
 	type |= IF;
       }
-      else if (find(" in ", buff, i)) {
-	type |= NORM;
+      else if (find("~in~", buff, i)) {
+        if (!(type&NORM))
+	  type = NORM;
 	type &= ~ANIO;
       }
-    if (i+4 <= last)
-      if (find(" adr ", buff, i)) {
-	type |= NORM;
+    if (i+2 <= last)
+      if (find("~adr~", buff, i)) {
+        if (!(type&NORM))
+	  type = NORM;
 	type |= ANIO;
       }
-      else if (find(" out ", buff, i)) {
-	type |= NORM;
+      else if (find("~out~", buff, i)) {
+        if (!(type&NORM))
+	  type = NORM;
 	type &= ~ANIO;
+	printf("type should be:%d\n", type);
       }
-      else if (find(" for ", buff, i))
+      else if (find("~for~", buff, i))
 	type = FOR;
-      else if (find(" int ", buff, i))
+      else if (find("~int~", buff, i))
 	type = INT;
-    if (i+5 <= last)
-      if (find(" goto ", buff, i))
+    if (i+3 <= last)
+      if (find("~goto~", buff, i))
 	type = GOTO;
-      else if (find(" else ", buff, i)) {
-	type |= NORM;
+      else if (find("~else~", buff, i)) {
+        if (!(type&NORM))
+	  type = NORM;
 	type |= ELSE;
       }
   }
+  printf("type after main loop:%d\n", type);
   //the only possibility left is a macro call
   if (type == 0)
     type = INS;
+  printf("argc:%d\n", argc);
   //set the number of arguments if this is a normal line
   if (type&NORM) {
     if (argc&1)
@@ -187,6 +209,7 @@ int typeline(char* buff) {
     if (argc&2)
       type |= ARGS1;
   }
+  printf("type after everything:%d\n", type);
   return type;
 }
 
@@ -218,18 +241,16 @@ void grabline(char** buff, FILE* sfd) {
   for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
        notend && c != 10 && c != 13;
        notend = fread(&c, sizeof(char), 1, sfd)) {
-    printf("check c = %d\n", c);
     i++;
     sidx++;
   }
-  printf("check i: %d\n", i);
   //allocate buffer
   //realloc prevents huge amounts of ram from being consumed
-  //there are 3 extra characters: ' ' at the start, ' ' at the end, then '\0'
+  //ONLY 1 extra character: '\0' at end
   if (*buff == NULL)
-    *buff = malloc(sizeof(char)*(i+3));
+    *buff = malloc(sizeof(char)*(i+1));
   else
-    *buff = realloc(*buff, sizeof(char)*(i+3));
+    *buff = realloc(*buff, sizeof(char)*(i+1));
   //rewind file to re-read line
   //if the loop terminated because it was the end, then there is 1 less rewind
   //only need to increment sidx if not end
@@ -242,17 +263,14 @@ void grabline(char** buff, FILE* sfd) {
     fseek(sfd, -i, SEEK_CUR);
   //actually copy into the buffer
   //starting with i = 1 since this is the index; ' ' will be at [0] always
-  for (i = 1, notend = fread(&c, sizeof(char), 1, sfd);
+  for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
        notend && c != 10 && c != 13;
        notend = fread(&c, sizeof(char), 1, sfd)) {
-    printf("copy c = %d\n", c);
     (*buff)[i] = c;
     i++;
   }
-  //terminating character and padding ' '
-  (*buff)[0] = ' ';
-  (*buff)[i] = ' ';
-  (*buff)[i+1] = '\0';
+  //terminating character
+  (*buff)[i] = '\0';
   printf("i = %d; got line:%s\n", i, *buff);
   //increase line count
   sline++;
@@ -291,13 +309,18 @@ unsigned long expr(char* buff, unsigned long i) {
 void setnext(FILE* fd, unsigned long i, unsigned long l) {
   int a;
   char c;
-  if (!fseek(fd, i+10, SEEK_SET)) {
+  if (fseek(fd, i+10, SEEK_SET)) {
     printf("error 0x0a\nL%d: unable to access next re-write\n", sline);
     exit(0x0a);
   }
-  for (a=1<<12; a > (0 && (c = l/a%16+ (l/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+  for (a=1<<12; a > 0; a = a>>4) {
+    if (l/a%16 < 10)
+      c = l/a%16+'0';
+    else
+      c = l/a%16+'a'-10;
     fwrite(&c, sizeof(char), 1, fd);
-  if (!fseek(fd, tidx, SEEK_SET)) {
+  }
+  if (fseek(fd, tidx, SEEK_SET)) {
     printf("error 0x0b\nL%d: unable to return to cursor location\n\
 this is most likely indicative of a severe compiler defect\n", sline);
     exit(0x0b);
@@ -307,37 +330,51 @@ this is most likely indicative of a severe compiler defect\n", sline);
 void writecomm(FILE* fd, char* opcode, unsigned long select) {
   int a;
   char c;
-  for (a=1<<12; a > (0 && (c = tidx/LINESIZE/a%16+
-			   (tidx/LINESIZE/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+  for (a=1<<12; a > 0; a = a>>4) {
+    if (tidx/LINESIZE/a%16 < 10)
+      c = tidx/LINESIZE/a%16+'0';
+    else
+      c = tidx/LINESIZE/a%16+'a'-10;
     fwrite(&c, sizeof(char), 1, fd);
+  }
   fwrite(opcode, sizeof(char), 2, fd);
-  for (a=1<<12; a > (0 && (c = select/a%16+
-			   (select/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+  for (a=1<<12; a > 0; a = a>>4) {
+    if (select/a%16 < 10)
+      c = select/a%16+'0';
+    else
+      c = select/a%16+'a'-10;
     fwrite(&c, sizeof(char), 1, fd);
+  }
   tidx += LINESIZE;
-  for (a=1<<12; a > (0 && (c = tidx/LINESIZE/a%16+
-			   (tidx/LINESIZE/a%16 < 10 ? '0' : 'a'-10))); a = a>>4)
+  for (a=1<<12; a > 0; a = a>>4) {
+    if (tidx/LINESIZE/a%16 < 10)
+      c = tidx/LINESIZE/a%16+'0';
+    else
+      c = tidx/LINESIZE/a%16+'a'-10;
     fwrite(&c, sizeof(char), 1, fd);
+  }
+  //clerity only;remove this later!!!!! also update LINESIZE
+  fprintf(fd, " ");
 }
 
 void initint(char* buff) {
   unsigned long i, j;
   char* tinybuff;
   unsigned long size;
-  for (i = 5, tinybuff = NULL; 1;) {
+  for (i = 3, tinybuff = NULL; 1;) {
     //scan for start of name
     //note: ' ' is not expected in the name and, if present, will result in
-    //the space being removed
-    while(buff[i] == ' ')
+    //an error
+    while(buff[i] == ' ') {
       i++;
-    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++)
-      //if there is a space not at the very end where ' ' is added
-      if (buff[i] == ' ' && buff[i+1] != '\0')
-	j--;
-      else if (buff[i] == ' ') {
+    }
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++) {
+      printf("line is |%s| char%d is |%c|\n", buff, i, buff[i]);
+      if (buff[i] == ' ') {
 	printf("error 0x04\nL%d: Space within variable name\n", sline);
 	exit(0x04);
       }
+    }
     //go back to the start of the name
     i -= j;
     if (j == 0) {
@@ -353,10 +390,8 @@ void initint(char* buff) {
     else
       ram = realloc(ram, sizeof(struct r)*rcount);
     ram[rcount-1].name = malloc(sizeof(char)*(j+1));
-    //just check for space as an indicator now; it is the char before '\0'
     //just getting the tagline for now; need to check if it is an array
-    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0' &&
-	   buff[i] != ' '; j++, i++)
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; j++, i++)
       ram[rcount-1].name[j] = buff[i];
     ram[rcount-1].name[j] = '\0';
     //Array handling; the [] part is not included in the name,
@@ -394,11 +429,11 @@ void initint(char* buff) {
       ram[rcount-1].size = 1;
       ram[rcount-1].value = malloc(sizeof(unsigned long));
     }
-    //move past the end of this statement
-    i++;
     //line is done
     if (buff[i] == '\0')
       break;
+    //move past the end of this statement
+    i++;
   }
 }
     
@@ -412,6 +447,7 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
   unsigned long iflast;
   unsigned long fbstart;
   unsigned long mbstart;
+  buff = NULL;
   while (1) {
     grabline(&buff, sfd);
     type = typeline(buff);
@@ -447,6 +483,7 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
 	  argc |= 1;
 	if (type & ARGS1)
 	  argc |= 2;
+	printf("hex values: argc:%x type:%x\n", argc, type);
 	if ((type & ANIO) && (argc == 1)) {
 	  writecomm(tfd, "80", ~expr(buff, 0));
 	  writecomm(tfd, "a0", expr(buff, 0));
@@ -478,6 +515,7 @@ assignment on an output statement\n", sline);
 	  return 0;
 	} 
 	else if (type & IF) {
+	  printf("if start\n");
 	  if (!(tidx/LINESIZE%2))
 	    writecomm(tfd, "40", 0);
 	  if (type & ANIO)
@@ -491,9 +529,11 @@ assignment on an output statement\n", sline);
 	    exit(0x09);
 	  }
 	  noop = tidx;
+	  printf("\tnoop:%d\n", noop);
 	  writecomm(tfd, "40", 0);
-	  insertline(sfd, tfd, depth+1);
+	  insertline(sfd, tfd, depth+1); 
 	  iflast = tidx-LINESIZE;
+	  printf("iflast:%d\n", iflast);
 	  setnext(tfd, noop, tidx/LINESIZE);
 	  grabline(&buff, sfd);
 	  nexttype = typeline(buff);
@@ -550,6 +590,9 @@ int main(int argc, char* argv[]) {
   }
   FILE* tfd = fopen(argv[2], "wb");
   printf("hola0\n");
+  int type = 0xffff;
+  type &= ~ANIO;
+  printf("type &= ~ANIO:%x\n", type);
   insertline(sfd, tfd, 0);
   fclose(sfd);
   fclose(tfd);
