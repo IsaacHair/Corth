@@ -182,7 +182,7 @@ int typeline(char* buff) {
       type |= ARGS1;
   }
   return type;
-} 
+}
 
 void grabline(char** buff, FILE* sfd) {
   int i;
@@ -203,7 +203,7 @@ void grabline(char** buff, FILE* sfd) {
 	 notend && c != 10 && c != 13;
 	 notend = fread(&c, sizeof(char), 1, sfd)) {
       i++;
-    sidx++;
+      sidx++;
     }
     if (*buff == NULL)
       *buff = malloc(sizeof(char)*(i+1));
@@ -255,20 +255,24 @@ unsigned long expr(char* buff, unsigned long i) {
   return 69;
 }
 
-void setnext(FILE* fd, unsigned long i, unsigned long l) {
+void printnum(FILE* fd, short num) {
   int a;
   char c;
+  for (a=1<<12; a > 0; a = a>>4) {
+    if (num/a%16 < 10)
+      c = num/a%16+'0';
+    else
+      c = num/a%16+'a'-10;
+    fwrite(&c, sizeof(char), 1, fd);
+  }
+}
+
+void setnext(FILE* fd, unsigned long i, unsigned long l) {
   if (fseek(fd, i+10, SEEK_SET)) {
     printf("error 0x0a\nL%d: unable to access next re-write\n", sline);
     exit(0x0a);
   }
-  for (a=1<<12; a > 0; a = a>>4) {
-    if (l/a%16 < 10)
-      c = l/a%16+'0';
-    else
-      c = l/a%16+'a'-10;
-    fwrite(&c, sizeof(char), 1, fd);
-  }
+  printnum(fd, l%(1<<16));
   if (fseek(fd, tidx, SEEK_SET)) {
     printf("error 0x0b\nL%d: unable to return to cursor location\n\
 this is most likely indicative of a severe compiler fault\n", sline);
@@ -279,29 +283,11 @@ this is most likely indicative of a severe compiler fault\n", sline);
 void writecomm(FILE* fd, char* opcode, unsigned long select) {
   int a;
   char c;
-  for (a=1<<12; a > 0; a = a>>4) {
-    if (tidx/LINESIZE/a%16 < 10)
-      c = tidx/LINESIZE/a%16+'0';
-    else
-      c = tidx/LINESIZE/a%16+'a'-10;
-    fwrite(&c, sizeof(char), 1, fd);
-  }
+  printnum(fd, tidx/LINESIZE%(1<<16));
   fwrite(opcode, sizeof(char), 2, fd);
-  for (a=1<<12; a > 0; a = a>>4) {
-    if (select/a%16 < 10)
-      c = select/a%16+'0';
-    else
-      c = select/a%16+'a'-10;
-    fwrite(&c, sizeof(char), 1, fd);
-  }
+  printnum(fd, select%(1<<16));
   tidx += LINESIZE;
-  for (a=1<<12; a > 0; a = a>>4) {
-    if (tidx/LINESIZE/a%16 < 10)
-      c = tidx/LINESIZE/a%16+'0';
-    else
-      c = tidx/LINESIZE/a%16+'a'-10;
-    fwrite(&c, sizeof(char), 1, fd);
-  }
+  printnum(fd, tidx/LINESIZE%(1<<16));
   //clerity only;remove this later!!!!! also update LINESIZE
   fprintf(fd, " ");
 }
@@ -311,15 +297,13 @@ void initint(char* buff) {
   char* tinybuff;
   unsigned long size;
   for (i = 3, tinybuff = NULL; 1;) {
-    while(buff[i] == ' ') {
+    while(buff[i] == ' ')
       i++;
-    }
-    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++) {
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++)
       if (buff[i] == ' ') {
 	printf("error 0x04\nL%d: Space within variable name\n", sline);
 	exit(0x04);
       }
-    }
     i -= j;
     if (j == 0) {
       printf("error 0x03\nL%d: Empty declaration\n", sline);
@@ -341,9 +325,9 @@ void initint(char* buff) {
 	  exit(0x06);
 	}
       if (tinybuff == NULL)
-	tinybuff = malloc(sizeof(char)*(j+1));
+        tinybuff = malloc(sizeof(char)*(j+1));
       else
-	tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
+        tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
       i -= j;
       for (j = 0; buff[i] != ']'; i++, j++)
 	tinybuff[j] = buff[i];
@@ -361,7 +345,15 @@ void initint(char* buff) {
     i++;
   }
 }
-    
+
+void argument(int* argc, int type) {
+  *argc = 0;
+  if (type & ARGS0)
+    *argc |= 1;
+  if (type & ARGS1)
+    *argc |= 2;
+}
+
 int insertline(FILE* sfd, FILE* tfd, long depth) {
   int type, nexttype;
   int argc;
@@ -376,125 +368,129 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
   while (1) {
     grabline(&buff, sfd);
     type = typeline(buff);
-    if (type == BEGCOM) {
+    switch (type) {
+    case BEGCOM:
       comment = 1;
-      continue;
-    }
-    else if (type == ENDCOM) {
+      break;
+    case ENDCOM:
       comment = 0;
-      continue;
-    }
-    if (type == TERM) {
+      break;
+    case TERM:
       usegotos();
       return 0;
     }
-    if (!comment) {
-      if (linedepth(buff) < depth) {
-	backline(sfd);
-	return 0;
-      }
-      if (tidx/LINESIZE >= (1<<16)) {
-	printf("error 0x07\nL%d: compiled program exceeds maximum size \
+    if (comment)
+      continue;
+    if (linedepth(buff) < depth) {
+      backline(sfd);
+      return 0;
+    }
+    if (tidx/LINESIZE >= (1<<16)) {
+      printf("error 0x07\nL%d: compiled program exceeds maximum size \
 (64k instructions)\n", sline);
-	exit(0x07);
+      exit(0x07);
+    }
+    switch (type) {
+    case INT:
+      initint(buff);
+      break;
+    case MACRO:
+      initmacro(buff);
+      break;
+    case FOR:
+      initfor(buff);
+      while (testfor(buff)) {
+	fbstart = sidx;
+	insertline(sfd, tfd, depth+1);
+	incfor(buff);
+	if (testfor(buff))
+	  movecur(sfd, fbstart);
       }
-      if (type == INT)
-	initint(buff);
-      else if (type == MACRO)
-	initmacro(buff);
-      else if (type & NORM) {
-	argc = 0;
-	if (type & ARGS0)
-	  argc |= 1;
-	if (type & ARGS1)
-	  argc |= 2;
-	if ((type & ANIO) && (argc == 1)) {
-	  writecomm(tfd, "80", ~expr(buff, 0));
-	  writecomm(tfd, "a0", expr(buff, 0));
-	}
-	else if ((type & ANIO) && (argc > 1)) {
-	  writecomm(tfd, "80", (~expr(buff, 0))&expr(buff, 1));
-	  writecomm(tfd, "a0", (expr(buff, 0))&expr(buff, 1));
-	}
-	else if (!(type & ANIO) && (argc == 1) && !(type & IF)) {
-	  writecomm(tfd, "40", ~expr(buff, 0));
-	  writecomm(tfd, "60", expr(buff, 0));
-	}
-	else if (!(type & ANIO) && (argc > 1) && !(type & IF)) {
-	  writecomm(tfd, "40", (~expr(buff, 0))&expr(buff, 1));
-	  writecomm(tfd, "60", (expr(buff, 0))&expr(buff, 1));
-	}
-        if (type & ASN)
-	  if (!(type & ANIO)) {
-	    printf("error 0x08\nL%d: \
+      break;
+    case INS:
+      usemacro(buff, 0);
+      break;
+    case INSA:
+      usemacro(buff, expr(buff, 0));
+      break;
+    case SET:
+      setlabel(buff, 0);
+      break;
+    case SETA:
+      setlabel(buff, expr(buff, 0));
+      break;
+    case GOTO:
+      setgoto(buff, 0);
+      break;
+    case GOTOA:
+      setgoto(buff, expr(buff, 0));
+      break;
+    }
+    //type should be normal unless error
+    if (!(type&NORM)) {
+      printf("error0x05\nL%d invalid line type", sline);
+      exit(0x05);
+    }
+    argument(&argc, type);
+    if ((type & ANIO) && (argc == 1)) {
+      writecomm(tfd, "80", ~expr(buff, 0));
+      writecomm(tfd, "a0", expr(buff, 0));
+    }
+    else if ((type & ANIO) && (argc > 1)) {
+      writecomm(tfd, "80", (~expr(buff, 0))&expr(buff, 1));
+      writecomm(tfd, "a0", (expr(buff, 0))&expr(buff, 1));
+    }
+    else if (!(type & ANIO) && (argc == 1) && !(type & IF)) {
+      writecomm(tfd, "40", ~expr(buff, 0));
+      writecomm(tfd, "60", expr(buff, 0));
+    }
+    else if (!(type & ANIO) && (argc > 1) && !(type & IF)) {
+      writecomm(tfd, "40", (~expr(buff, 0))&expr(buff, 1));
+      writecomm(tfd, "60", (expr(buff, 0))&expr(buff, 1));
+    }
+    if (type & ASN)
+      if (!(type & ANIO)) {
+	printf("error 0x08\nL%d: \
 assignment on an output statement\n", sline);
-	    exit(0x08);
-	  }
-	  else if (expr(buff, 2))
-	    writecomm(tfd, "e0", 0);
-	  else
-	    writecomm(tfd, "c0", 0);
-	if ((type & ELSE) && !(type & IF)) {
-	  insertline(sfd, tfd, depth+1);
-	  return 0;
-	} 
-	else if (type & IF) {
-	  if (!(tidx/LINESIZE%2))
-	    writecomm(tfd, "40", 0);
-	  if (type & ANIO)
-	    writecomm(tfd, "20", 0);
-	  else if (argc == 1)
-	    writecomm(tfd, "00", expr(buff, 0));
-	  else if (argc == 0)
-	    writecomm(tfd, "00", 65535);
-	  else {
-	    printf("error 0x09\nL%dtoo many arguments to 'if'\n", sline);
-	    exit(0x09);
-	  }
-	  noop = tidx;
-	  writecomm(tfd, "40", 0);
-	  insertline(sfd, tfd, depth+1); 
-	  iflast = tidx-LINESIZE;
-	  setnext(tfd, noop, tidx/LINESIZE);
-	  grabline(&buff, sfd);
-	  nexttype = typeline(buff);
-	  backline(sfd);
-	  if (nexttype & ELSE) {
-	    insertline(sfd, tfd, depth);
-	    setnext(tfd, iflast, tidx/LINESIZE);
-	  }
-	  else
-	    setnext(tfd, iflast, tidx/LINESIZE);
-	  if (type & ELSE)
-	    return 0;
-	}
+	exit(0x08);
       }
-      else if (type == FOR) {
-	initfor(buff);
-	while (testfor(buff)) {
-	  fbstart = sidx;
-	  insertline(sfd, tfd, depth+1);
-	  incfor(buff);
-	  if (testfor(buff))
-	    movecur(sfd, fbstart);
-	}
-      }
-      else if (type == INS)
-	usemacro(buff, 0);
-      else if (type == INSA)
-	usemacro(buff, expr(buff, 0));
-      else if (type == SET)
-	setlabel(buff, 0);
-      else if (type == SETA)
-	setlabel(buff, expr(buff, 0));
-      else if (type == GOTO)
-	setgoto(buff, 0);
-      else if (type == GOTOA)
-	setgoto(buff, expr(buff, 0));
+      else if (expr(buff, 2))
+	writecomm(tfd, "e0", 0);
+      else
+	writecomm(tfd, "c0", 0);
+    if ((type & ELSE) && !(type & IF)) {
+      insertline(sfd, tfd, depth+1);
+      return 0;
+    } 
+    else if (type & IF) {
+      if (!(tidx/LINESIZE%2))
+	writecomm(tfd, "40", 0);
+      if (type & ANIO)
+	writecomm(tfd, "20", 0);
+      else if (argc == 1)
+	writecomm(tfd, "00", expr(buff, 0));
+      else if (argc == 0)
+	writecomm(tfd, "00", 65535);
       else {
-	printf("error 0x05\nL%d: undefined line type %d\n", sline, type);
-	exit(0x05);
+	printf("error 0x09\nL%dtoo many arguments to 'if'\n", sline);
+	exit(0x09);
       }
+      noop = tidx;
+      writecomm(tfd, "40", 0);
+      insertline(sfd, tfd, depth+1); 
+      iflast = tidx-LINESIZE;
+      setnext(tfd, noop, tidx/LINESIZE);
+      grabline(&buff, sfd);
+      nexttype = typeline(buff);
+      backline(sfd);
+      if (nexttype & ELSE) {
+	insertline(sfd, tfd, depth);
+	setnext(tfd, iflast, tidx/LINESIZE);
+      }
+      else
+	setnext(tfd, iflast, tidx/LINESIZE);
+      if (type & ELSE)
+	return 0;
     }
   }
 }
