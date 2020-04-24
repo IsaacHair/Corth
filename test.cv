@@ -1,4 +1,16 @@
-if adr
+if in
 	out, 0000
-	out, 1111, 1111
+	if adr
+		out, 0000
+	else
+		out, 9999
+else if in
 	adr->0
+else if adr
+	adr->1
+else if adr
+	adr, 1321, ffae
+else if in, 0000
+	out, 1111
+adr->0
+out, 0000

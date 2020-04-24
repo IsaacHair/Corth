@@ -55,7 +55,6 @@ unsigned long sidx = 0;
 
 void backline(FILE* sfd) {
   char c;
-  printf("backline\n");
   //keep going back until a newline character is identified
   //Testing fseek ensures that, if this is the start of the file,
   //the loop will not continue forever.
@@ -102,7 +101,6 @@ _Bool find(char* word, char* str, unsigned long place) {
 }
 
 int typeline(char* buff) {
-  printf("typeline\n");
   unsigned long i;
   unsigned long last;
   unsigned long argc;
@@ -182,7 +180,6 @@ int typeline(char* buff) {
         if (!(type&NORM))
 	  type = NORM;
 	type &= ~ANIO;
-	printf("type should be:%d\n", type);
       }
       else if (find("~for~", buff, i))
 	type = FOR;
@@ -197,11 +194,9 @@ int typeline(char* buff) {
 	type |= ELSE;
       }
   }
-  printf("type after main loop:%d\n", type);
   //the only possibility left is a macro call
   if (type == 0)
     type = INS;
-  printf("argc:%d\n", argc);
   //set the number of arguments if this is a normal line
   if (type&NORM) {
     if (argc&1)
@@ -209,7 +204,6 @@ int typeline(char* buff) {
     if (argc&2)
       type |= ARGS1;
   }
-  printf("type after everything:%d\n", type);
   return type;
 }
 
@@ -224,7 +218,6 @@ void grabline(char** buff, FILE* sfd) {
   for (notend = fread(&c, sizeof(char), 1, sfd);
        notend && (c == 10 || c == 13);
        notend = fread(&c, sizeof(char), 1, sfd)) {
-    printf("garbage c = %d\n", c);
     if (c == 10) {
       fread(&c, sizeof(char), 1, sfd);
       break;
@@ -233,51 +226,56 @@ void grabline(char** buff, FILE* sfd) {
   }
   //go back so that the valid character is seen; if !notend, then not needed
   //also means that sidx is in the correct spot
-  if (notend)
-    fseek(sfd, -1, SEEK_CUR);
-  //read line until you reach a terminating character
-  //just finding the size of the buffer right now
-  //handle sidx
-  for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
-       notend && c != 10 && c != 13;
-       notend = fread(&c, sizeof(char), 1, sfd)) {
-    i++;
-    sidx++;
-  }
-  //allocate buffer
-  //realloc prevents huge amounts of ram from being consumed
-  //ONLY 1 extra character: '\0' at end
-  if (*buff == NULL)
-    *buff = malloc(sizeof(char)*(i+1));
-  else
-    *buff = realloc(*buff, sizeof(char)*(i+1));
-  //rewind file to re-read line
-  //if the loop terminated because it was the end, then there is 1 less rewind
-  //only need to increment sidx if not end
-  //the rest of the function will just return to this sidx spot so it is good
   if (notend) {
+    fseek(sfd, -1, SEEK_CUR);
+    //read line until you reach a terminating character
+    //just finding the size of the buffer right now
+    //handle sidx
+    for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
+	 notend && c != 10 && c != 13;
+	 notend = fread(&c, sizeof(char), 1, sfd)) {
+      i++;
     sidx++;
-    fseek(sfd, -(i+1), SEEK_CUR);
+    }
+    //allocate buffer
+    //realloc prevents huge amounts of ram from being consumed
+    //ONLY 1 extra character: '\0' at end
+    if (*buff == NULL)
+      *buff = malloc(sizeof(char)*(i+1));
+    else
+      *buff = realloc(*buff, sizeof(char)*(i+1));
+    //rewind file to re-read line
+    //if the loop terminated because it was the end, then there is 1 less rewind
+    //only need to increment sidx if not end
+    //the rest of the function will just return to this sidx spot so it is good
+    if (notend) {
+      sidx++;
+      fseek(sfd, -(i+1), SEEK_CUR);
+    }
+    else
+      fseek(sfd, -i, SEEK_CUR);
+    //actually copy into the buffer
+    //starting with i = 1 since this is the index; ' ' will be at [0] always
+    for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
+	 notend && c != 10 && c != 13;
+	 notend = fread(&c, sizeof(char), 1, sfd)) {
+      (*buff)[i] = c;
+      i++;
+    }
+    //terminating character
+    (*buff)[i] = '\0';
+    printf("i = %d, sidx=%d, sline=%d; got line:%s\n", i, sidx, sline, *buff);
+    //increase line count
+    sline++;
+    //if the line is blank, grab a non-blank one
+    //returning a blank line indicates the end of the file
+    if (notend && i == 0)
+      grabline(buff, sfd);
   }
-  else
-    fseek(sfd, -i, SEEK_CUR);
-  //actually copy into the buffer
-  //starting with i = 1 since this is the index; ' ' will be at [0] always
-  for (i = 0, notend = fread(&c, sizeof(char), 1, sfd);
-       notend && c != 10 && c != 13;
-       notend = fread(&c, sizeof(char), 1, sfd)) {
-    (*buff)[i] = c;
-    i++;
+  else {
+    printf("end\n");
+    (*buff)[0] = '\0';
   }
-  //terminating character
-  (*buff)[i] = '\0';
-  printf("i = %d; got line:%s\n", i, *buff);
-  //increase line count
-  sline++;
-  //if the line is blank, grab a non-blank one
-  //returning a blank line indicates the end of the file
-  if (notend && i == 1)
-    grabline(buff, sfd);
   //This function will leave the file cursor about to read the character
   //just after the f i r s t line terminating character.
 }
@@ -369,7 +367,6 @@ void initint(char* buff) {
       i++;
     }
     for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++) {
-      printf("line is |%s| char%d is |%c|\n", buff, i, buff[i]);
       if (buff[i] == ' ') {
 	printf("error 0x04\nL%d: Space within variable name\n", sline);
 	exit(0x04);
@@ -449,6 +446,7 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
   unsigned long mbstart;
   buff = NULL;
   while (1) {
+    printf("insertline\n");
     grabline(&buff, sfd);
     type = typeline(buff);
     if (type == BEGCOM) {
@@ -483,7 +481,6 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
 	  argc |= 1;
 	if (type & ARGS1)
 	  argc |= 2;
-	printf("hex values: argc:%x type:%x\n", argc, type);
 	if ((type & ANIO) && (argc == 1)) {
 	  writecomm(tfd, "80", ~expr(buff, 0));
 	  writecomm(tfd, "a0", expr(buff, 0));
@@ -515,7 +512,7 @@ assignment on an output statement\n", sline);
 	  return 0;
 	} 
 	else if (type & IF) {
-	  printf("if start\n");
+	  printf("\tif start\n");
 	  if (!(tidx/LINESIZE%2))
 	    writecomm(tfd, "40", 0);
 	  if (type & ANIO)
@@ -533,11 +530,14 @@ assignment on an output statement\n", sline);
 	  writecomm(tfd, "40", 0);
 	  insertline(sfd, tfd, depth+1); 
 	  iflast = tidx-LINESIZE;
-	  printf("iflast:%d\n", iflast);
+	  printf("\tiflast:%d\n", iflast);
 	  setnext(tfd, noop, tidx/LINESIZE);
+	  printf("previous:%s\n", buff);
 	  grabline(&buff, sfd);
 	  nexttype = typeline(buff);
-	  backline(sfd);
+	  printf("new:%s\n\n", buff);
+	  if (nexttype != TERM)
+	    backline(sfd);
 	  if (nexttype & ELSE) {
 	    insertline(sfd, tfd, depth);
 	    setnext(tfd, iflast, tidx/LINESIZE);
@@ -589,10 +589,8 @@ int main(int argc, char* argv[]) {
     exit(0x02);
   }
   FILE* tfd = fopen(argv[2], "wb");
-  printf("hola0\n");
   int type = 0xffff;
   type &= ~ANIO;
-  printf("type &= ~ANIO:%x\n", type);
   insertline(sfd, tfd, 0);
   fclose(sfd);
   fclose(tfd);
