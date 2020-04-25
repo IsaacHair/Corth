@@ -53,6 +53,13 @@ unsigned long sidx = 0;
 //line length in chars for target file
 #define LINESIZE 15
 
+void* allocate(void* point, unsigned long bytes) {
+  if (point == NULL)
+    return malloc(bytes);
+  else
+    return realloc(point, bytes);
+}
+
 void backline(FILE* sfd) {
   //keep going back until a newline character is identified
   char c;
@@ -205,10 +212,7 @@ void grabline(char** buff, FILE* sfd) {
       i++;
       sidx++;
     }
-    if (*buff == NULL)
-      *buff = malloc(sizeof(char)*(i+1));
-    else
-      *buff = realloc(*buff, sizeof(char)*(i+1));
+    *buff = allocate(*buff, sizeof(char)*(i+1));
     if (notend) {
       sidx++;
       fseek(sfd, -(i+1), SEEK_CUR);
@@ -255,7 +259,7 @@ unsigned long expr(char* buff, unsigned long i) {
   return 69;
 }
 
-void printnum(FILE* fd, short num) {
+void printnum(FILE* fd, unsigned short num) {
   int a;
   char c;
   for (a=1<<12; a > 0; a = a>>4) {
@@ -298,8 +302,9 @@ void initint(char* buff) {
   unsigned long size;
   for (i = 3, tinybuff = NULL; 1;) {
     while(buff[i] == ' ')
-      i++;
-    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; i++, j++)
+      (i)++;
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0';
+	 (i)++, j++)
       if (buff[i] == ' ') {
 	printf("error 0x04\nL%d: Space within variable name\n", sline);
 	exit(0x04);
@@ -310,12 +315,10 @@ void initint(char* buff) {
       exit(0x03);
     }
     rcount++;
-    if (ram == NULL)
-      ram = malloc(sizeof(struct r)*rcount);
-    else
-      ram = realloc(ram, sizeof(struct r)*rcount);
+    ram = allocate(ram, sizeof(struct r)*rcount);
     ram[rcount-1].name = malloc(sizeof(char)*(j+1));
-    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0'; j++, i++)
+    for (j = 0; buff[i] != '[' && buff[i] != ',' && buff[i] != '\0';
+	 j++, (i)++)
       ram[rcount-1].name[j] = buff[i];
     ram[rcount-1].name[j] = '\0';
     if (buff[i] == '[') {
@@ -324,10 +327,7 @@ void initint(char* buff) {
 	  printf("error 0x06\nL%d: incomplete array declaration\n", sline);
 	  exit(0x06);
 	}
-      if (tinybuff == NULL)
-        tinybuff = malloc(sizeof(char)*(j+1));
-      else
-        tinybuff = realloc(tinybuff, sizeof(char)*(j+1));
+      tinybuff = allocate(tinybuff, sizeof(char)*(j+1));
       i -= j;
       for (j = 0; buff[i] != ']'; i++, j++)
 	tinybuff[j] = buff[i];
@@ -428,7 +428,7 @@ int insertline(FILE* sfd, FILE* tfd, long depth) {
     }
     //type should be normal unless error
     if (!(type&NORM)) {
-      printf("error0x05\nL%d invalid line type", sline);
+      printf("error0x05\nL%d invalid line type\n", sline);
       exit(0x05);
     }
     argument(&argc, type);
