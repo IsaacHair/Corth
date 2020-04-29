@@ -1,3 +1,7 @@
 out, 0000
 adr, ffff, ffff
 adr, 0000, 0000
+if in
+	out, 0000
+else
+	out, 8000
