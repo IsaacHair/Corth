@@ -1,4 +1,5 @@
 import java.io.*;
+import java.util.*;
 public class corthvsp {  
     public static void main(String[] args) {  
 	if (args.length != 2) {
@@ -21,5 +22,11 @@ public class corthvsp {
 	    System.out.println("Error 0x02\nunable to open files");
 	    System.exit(0x02);
 	}
+	ArrayList<Integer> exa = new ArrayList<Integer>();
+	exa.add(1);
+	exa.add(2);
+	exa.add(3);
+	for (int i = 0; i < exa.size(); i++)
+	    System.out.println(exa.get(i));
     }
 }  
