@@ -7,6 +7,9 @@ public class corthvsp {
 			       "usage: java corthvsp <source> <target>");
 	    System.exit(0x01);
 	}
+	FileInputStream source = new FileInputStream(args[0]);
+	FileOutputStream target = new FileOutputStream(args[1]);
+	ArrayList<line> content = new ArrayList<line>();
 	
     }
 }  
