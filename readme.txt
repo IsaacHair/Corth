@@ -747,5 +747,28 @@ class sourceline {
 	private boolean typegoto() {
 		
 	}
-	private boolean type
+	private boolean typeadr() {
+		
+	}
+	private boolean typeout() {
+		
+	}
+	private boolean typein() {
+		
+	}
+	public int args() {
+		/*return the number of arguments in the statement (this
+		excludes the assignment argument if present)*/
+	}
+	public String grabarg(int idx) {
+		/*return the idx number argument as a String*/
+	}
+}
+class expr {
+	public void expr() {
+		/*init that shit boi*/
+	}
+	public unsigned long val() {
+		/*return value*/
+	}
 }

@@ -7,4 +7,19 @@ public class corthvsp {
 			       "usage: java corthvsp <source> <target>");
 	    System.exit(0x01);
 	}
-	
+	test obj = new test();
+	obj.f2();
+	obj.a.b.f2();
+    }
+}
+
+class test {
+    private void f1() {
+	System.out.print("f1\n");
+    }
+    class a { class b { public void f2() {
+	f1();
+        super.super.f1();
+	System.out.println("f2");
+    } } }
+}
