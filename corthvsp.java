@@ -7,12 +7,4 @@ public class corthvsp {
 			       "usage: java corthvsp <source> <target>");
 	    System.exit(0x01);
 	}
-	try (source = new BufferedReader(new InputStreamReader
-					 (new FileInputStream(args[0])));
-	     target = new FileOutputStream(args[1]);) {
-	ArrayList<lineobj> line = new ArrayList<lineobj>();
-	while (source.available() > 0)
-	    line.add(source.getLine());
-	}
-    }
-}  
+	
