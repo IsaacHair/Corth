@@ -6,7 +6,7 @@ public class corthvsp {
 	    System.out.println("Error 0x01\nNeed source and target");
 	    System.exit(0x01);
 	}
-	ArrayList<String> rawlines = new ArrayList<String>();
+	ArrayList<String> rawLines = new ArrayList<String>();
 	try {
 		FileInputStream source = new FileInputStream(args[0]);
 		String buff = new String();
@@ -14,7 +14,7 @@ public class corthvsp {
 		while (c != -1) {
 			while ((c = source.read()) != '\n' && c != -1)
 				buff += Character.toString(c);
-			rawlines.add(buff);
+			rawLines.add(buff);
 			buff = new String();
 		}
 	}
@@ -22,19 +22,22 @@ public class corthvsp {
 		System.out.println("Error 0x02\nUnable to open source");
 		System.exit(0x02);
 	}
-	Program proglines = new Program(rawlines);
-	proglines.print();
+	Program progLines = new Program(rawLines);
+	progLines.print();
     }
 }
+class Parsed {
+	private int depth;
+	private boolean vAsn;
+	private boolean vIf;
+	private boolean vElse;
+	private boolean vAdrNotIO;
+	private ArrayList<String> expressions;
 class Program {
-	ArrayList<String> rawlines;
-	public Program(ArrayList<String> rawlines) {
-		this.rawlines = new ArrayList<String>();
-		for (String line : rawlines)
-			this.rawlines.add(line);
-	}
-	public void print() {
-		for (int i = 1; i <= rawlines.size(); i++)
-			System.out.println(i+":"+rawlines.get(i-1));
+	private ArrayList<Parsed> parsedLines;
+	public Program(ArrayList<String> rawLines) {
+		parsedLines = new ArrayList<Parsed>();
+		for (String strLine : rawLines)
+			parsedLines.add(new Parsed(strLine));
 	}
 }
