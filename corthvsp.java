@@ -22,23 +22,8 @@ public class corthvsp {
 		System.out.println("Error 0x02\nUnable to open source");
 		System.exit(0x02);
 	}
-	Program progLines = new Program(rawLines);
+	TokenStream tokenStream = new TokenStream(rawLines);
     }
 }
-class Tokens {
-	private boolean typeif;
-	private boolean typeelse;
-	private boolean typeasn;
-	private boolean typeAdrNotIO;
-	private String[] args;
-	public Tokens(String line) {
+class TokenStream {
 
-}
-class Program {
-	private ArrayList<Tokens> tokenLines;
-	public Program(ArrayList<String> rawlines) {
-		tokenLines = new ArrayList<Tokens>();
-		for (String line : rawlines)
-			tokenLines.add(new Tokens(line));
-	}
-}

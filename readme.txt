@@ -822,3 +822,30 @@ else
 
 for a least significant to most significant architecture
 
+QUICK QUESTION: how the fuck is memory management going to work
+is this shit pass by reference or by value?
+are there going to be local variables?
+how are arrays handled?
+
+OK NEW PLAN:
+
+******V5********
+
+going to create a very simple language:
+"for" loops
+macros
+gotos
+global variables
+if statement
+
+Variables must be allocated at the beginning of the program.
+Variables can be accessed by using their name.
+For arrays, simply use the name of the variable and then add [].
+If no [] is added to the variable, the default value is 0.
+Note that technically variables that are not arrays can still have []
+because they can be considered arrays with one element.
+
+NOTE: in this language, there is no if-else structure; you have to
+create that using if statements and gotos.
+
+Variables and lables can be used as one dimensional arrays, but macros cannot.
