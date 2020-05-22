@@ -772,3 +772,53 @@ class expr {
 		/*return value*/
 	}
 }
+/*
+ * Defines a stack for variables to be stored on when functions are called.
+ * Need to define a method for writing nested if-elses in a macro.
+ * This language is probably going to need some major expansion.
+ * It looks like this will need:
+ *   Arrays
+ *   "For" loops which define repeated insertion of their content.
+ *   Macros
+ *   If/Else, I/O, and Ram manipulation instructions
+ *   Allocation/Deallocation of local and global variables.
+ * Actually, now that I think about it, the current language supports
+ * everything that I am looking for.
+ * This architecture should not only allow for the creation of functions
+ * but also the creation of objects.
+ * The programmer just has to define everything from scratch.
+ * Nested return will require writing every function call before defining
+ * the function.
+ * Each call must allocate another 2 bytes on the allAddr array for that
+ * function.
+ * Then, this array can be used to build the return nest.
+ * Note that the value of allAddr is the address of the first byte.
+ */
+
+//macro to define nested return array using the sub-function ID on the stack
+#nestedReturn(allAddr, length)
+	int flag
+	for (flag = 1; length && flag; flag = 0)
+		if adr fff8
+			nestedReturnSub(allAddr+1)
+		else
+			nestedReturnSub(allAddr)
+
+length of 0005 should produce:
+
+if adr 0000
+	if adr 0001
+		goto allAddr+3
+	else
+		goto allAddr+1
+else
+	if adr 0001
+		goto allAddr+2
+	else
+		if adr 0002
+			goto allAddr+4
+		else
+			goto allAddr+0
+
+for a least significant to most significant architecture
+
