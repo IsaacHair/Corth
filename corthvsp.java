@@ -23,21 +23,22 @@ public class corthvsp {
 		System.exit(0x02);
 	}
 	Program progLines = new Program(rawLines);
-	progLines.print();
     }
 }
-class Parsed {
-	private int depth;
-	private boolean vAsn;
-	private boolean vIf;
-	private boolean vElse;
-	private boolean vAdrNotIO;
-	private ArrayList<String> expressions;
+class Tokens {
+	private boolean typeif;
+	private boolean typeelse;
+	private boolean typeasn;
+	private boolean typeAdrNotIO;
+	private String[] args;
+	public Tokens(String line) {
+
+}
 class Program {
-	private ArrayList<Parsed> parsedLines;
-	public Program(ArrayList<String> rawLines) {
-		parsedLines = new ArrayList<Parsed>();
-		for (String strLine : rawLines)
-			parsedLines.add(new Parsed(strLine));
+	private ArrayList<Tokens> tokenLines;
+	public Program(ArrayList<String> rawlines) {
+		tokenLines = new ArrayList<Tokens>();
+		for (String line : rawlines)
+			tokenLines.add(new Tokens(line));
 	}
 }
