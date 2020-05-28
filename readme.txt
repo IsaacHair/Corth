@@ -849,3 +849,15 @@ NOTE: in this language, there is no if-else structure; you have to
 create that using if statements and gotos.
 
 Variables and lables can be used as one dimensional arrays, but macros cannot.
+
+Note that macros and everything else is pass by reference because all
+variables are global.
+The actual process for macros is to simply insert what they received as
+parameters into their code.
+This allows for passage of variables or constants.
+
+Writing actuall programs in this language seems to be rather cumbersome
+and extremely difficult. Some major re-designing may be needed.
+
+Adding a this variable which acts like a normal variable but is automatically
+incremented every time inc is typed. Can be used for section ids

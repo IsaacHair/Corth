@@ -1,0 +1,78 @@
+/* Defines a pwm protocol to change the color of rgb leds.
+ * The red, green, and blue brightness levels are stored as 4 bit integers.
+ * These values are used to generate 64 pulses with a duty cycle of the
+ * brightness value.
+ * After the 64 pulses, the values are incremented.
+ * They are triangle waves with the green 112.5 degrees ahead of
+ * the red value and the blue value 112.5 degrees ahead of the green.
+ * looks kinda like this but double the resolution:
+ *   7     B   G   R
+ *       B   BG  GR  R           B
+ * V   B   G   BR  G   R       B
+ * a     G   R   B   G   R   B   G    etc.
+ * l   G   R       B   G   BR  G
+ * u     R           B   BG  GR  R
+ * e   R               B   G   R
+ *   0   <<Time>>
+
+int $red , $green , $blue
+int $dred , $dgreen , $dblue
+int $idx
+int $pos
+int $count
+int $redpin , $greenpin , $bluepin
+int $addimm
+int $compaddret [ 1000 ]
+/*setting the ADDRESS that these values point to on the vsp8
+expr $red = 0 , $green = 4 , $blue = 8 , $dred = c , $dgreen = d , $dblue = e
+expr $pos = 10 , $count = 14
+expr $addimm = 1a
+/*setting which PIN NUMBERS correspond to each color*/
+expr $redpin = f , $greenpin = e , $bluepin = d
+.set 4 , $red , 0
+.set 4 , $green , 5
+.set 4 , $blue , a
+.set 1 , $dred , 1
+.set 1 , $dgreen , 1
+.set 1 , $dred , 1
+.set 4 , $pos , 0
+.set 6 , $count , 0
+
+mark :allstart
+out 0000
+mark :posstart
+/*flip values to one if they equal the pos*/
+#pinflip @color , @colorpin
+	#eql 4 , @color , $pos
+	mark :eqltrue [ this ]
+	out ffff , ( 8000 >> @colorpin )
+	goto :eqlfalse [ this ]
+	mark :eqlfalse [ this ]
+	inc
+.pinflip $red , $redpin
+.pinflip $green , $greenpin
+.pinflip $blue , $bluepin
+/*increment pos*/
+.mvimm $pos , $addimm
+/*increment the count*/
+/*increment the colors based on their d value*/ 
+
+#set @len , @adr , @value
+	for $idx = 0 ; $idx < @len ; $idx = 0
+		adr @adr + $idx => ( @value / ( 1 << $idx ) ) % 2
+#eql @len , @numa , @numb
+	for $idx = 1 ; $idx && @len ; $idx = 0 
+		if adr @numa + @len - 1
+			if adr @numb + @len - 1
+				goto :eqldefault [ this ]
+			goto :eqlfalse [ this ]
+		if adr @num + @len - 1
+			goto :eqlfalse [ this ]
+		mark :eqldefault [ this ]
+		.eql @len - 1 , @numa , @numb
+	for $idx = 1 ; $idx && ( ! @len ) ; $idx = 0
+		goto :eqltrue [ this ]
+#nestret @len , @retpoint , @compretarr
+	for $idx = 1 ; $idx && @len ; $idx = 0
+		if adr @retpoint + @len - 1
+			
